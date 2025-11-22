@@ -998,6 +998,41 @@ def add_user_inline_input(update: Update, context: CallbackContext):
     existing = get_authorized_user(target_id)
     label = username or first_name or str(target_id)
 
+    existing = get_authorized_user(target_id)
+    label = username or first_name or str(target_id)
+
+    if add_super_admin(target_id, username=username, first_name=first_name, added_by=uid):
+        if existing:
+            status = "promoted to super admin" if not existing.get('is_super_admin') else "already a super admin"
+            update.message.reply_text(f"✅ {label} {status}")
+        else:
+            update.message.reply_text(f"✅ Added {label} as a super admin")
+    else:
+        update.message.reply_text("❌ Could not promote user. Check logs for details.")
+
+def add_user_inline_input(update: Update, context: CallbackContext):
+    uid = update.effective_user.id
+    if not is_super_admin(uid):
+        update.message.reply_text("❌ Only the super admin can add users")
+        return ADD_USER_INPUT
+
+    parts = update.message.text.split()
+    if not parts:
+        update.message.reply_text("Usage: user_id [username] [first name]\n\n/cancel")
+        return ADD_USER_INPUT
+
+    try:
+        target_id = int(parts[0])
+    except ValueError:
+        update.message.reply_text("❌ user_id must be a number\n\n/cancel")
+        return ADD_USER_INPUT
+
+    username = parts[1].lstrip('@') if len(parts) > 1 else None
+    first_name = ' '.join(parts[2:]) if len(parts) > 2 else None
+
+    existing = get_authorized_user(target_id)
+    label = username or first_name or str(target_id)
+
     if add_authorized_user(target_id, username=username, first_name=first_name, added_by=uid):
         if existing:
             status = "reactivated" if existing.get('is_active') == 0 else "updated"
