@@ -2,7 +2,7 @@
 """
 SHEERID ID CARD GENERATOR - ULTRA MEGA FAST - 2000+ IDs/MIN ⚡⚡⚡⚡⚡
 ✅ EXACT NAMES: Zero modifications to college names from JSON
-✅ CURRENT DATES: Within 30 days for SheerID verification
+✅ CURRENT DATES: Within 90 days for SheerID verification
 ✅ LARGE LOGO: Prominent 300x300 institution logo
 ✅ SAME FORMAT: STUDENTID_COLLEGEID.png + students.txt
 ✅ 24 COUNTRIES: US, CA, GB, IN, ID, AU, DE, FR, ES, IT, BR, MX, NL, SE, NO, DK, JP, KR, SG, NZ, ZA, CN, AE, PH
@@ -373,7 +373,7 @@ class UnlimitedIDCardGenerator:
             
             print("🗑️  All data cleared!")
             print(f"✅ EXACT NAMES: Uses JSON names as-is (NO changes)")
-            print(f"✅ SHEERID READY: Dates within 30 days")
+            print(f"✅ SHEERID READY: Dates within 90 days")
             print(f"✅ LARGE LOGO: 300x300 prominent display")
             print(f"✅ FORMAT: STUDENTID_COLLEGEID.png")
             print(f"✅ SAVE: students.txt + receipts/")
@@ -802,7 +802,7 @@ class UnlimitedIDCardGenerator:
         programs = programs_by_country.get(self.selected_country, ["Computer Science", "Business", "Engineering"])
         
         today = datetime.now(timezone.utc)
-        days_ago = random.randint(0, 30)
+        days_ago = random.randint(0, 90)
         doc_date = today - timedelta(days=days_ago)
         exp_date = doc_date + timedelta(days=random.choice([365, 730, 1095]))
         
@@ -826,7 +826,7 @@ class UnlimitedIDCardGenerator:
         filepath = os.path.join(self.receipts_dir, filename)
         
         width, height = 1800, 1100
-        
+
         card = Image.new("RGB", (width, height), self.colors["bg_cream"])
         draw = ImageDraw.Draw(card)
         fonts = self.load_fonts()
@@ -836,13 +836,13 @@ class UnlimitedIDCardGenerator:
         for i in range(border_thickness):
             draw.rectangle([i, i, width-i-1, height-i-1], outline=self.colors["navy"], width=1)
         
-        header_height = 280
-        draw.rectangle([border_thickness, border_thickness, 
-                       width-border_thickness, header_height], 
+        header_height = 240
+        draw.rectangle([border_thickness, border_thickness,
+                       width-border_thickness, header_height],
                       fill=self.colors["navy"])
-        
-        draw.rectangle([border_thickness, header_height - 20, 
-                       width-border_thickness, header_height], 
+
+        draw.rectangle([border_thickness, header_height - 18,
+                       width-border_thickness, header_height],
                       fill=self.colors["gold"])
         
         logo = self.create_large_logo(college_name)
@@ -858,22 +858,22 @@ class UnlimitedIDCardGenerator:
         max_width = width - 450
         
         name_x = 380
-        name_y = 80
-        
+        name_y = 70
+
         bbox = temp_draw.textbbox((0, 0), college_name, font=fonts['college'])
         text_width = bbox[2] - bbox[0]
         
         if text_width <= max_width:
-            draw.text((name_x, name_y), college_name, fill=self.colors["white"], 
+            draw.text((name_x, name_y), college_name, fill=self.colors["white"],
                      font=fonts['college'])
         else:
             lines = self.wrap_text_smart(college_name, fonts['college'], max_width, temp_draw)
             y_start = name_y if len(lines) == 2 else name_y - 20
             for i, line in enumerate(lines[:3]):
-                draw.text((name_x, y_start + (i * 55)), line, fill=self.colors["white"], 
+                draw.text((name_x, y_start + (i * 55)), line, fill=self.colors["white"],
                          font=fonts['college'])
-        
-        draw.text((name_x, name_y + 130), "STUDENT IDENTIFICATION CARD", 
+
+        draw.text((name_x, name_y + 120), "STUDENT IDENTIFICATION CARD",
                  fill=self.colors["gold"], font=fonts['subtitle'])
         
         draw.text((width - 200, 60), f"{self.current_year}-{self.current_year+1}", 
@@ -881,42 +881,71 @@ class UnlimitedIDCardGenerator:
         
         watermark_img = Image.new('RGBA', (width, height), (255, 255, 255, 0))
         watermark_draw = ImageDraw.Draw(watermark_img)
-        watermark_draw.text((width//2, height//2), "VALID", 
-                          fill=(200, 200, 200, 30), font=fonts['watermark'], anchor="mm")
+        watermark_draw.text((width//2, height//2), "VALID",
+                          fill=(200, 200, 200, 25), font=fonts['watermark'], anchor="mm")
         card = Image.alpha_composite(card.convert('RGBA'), watermark_img).convert('RGB')
         draw = ImageDraw.Draw(card)
-        
-        content_y = header_height + 60
-        
-        # ⚡⚡⚡⚡⚡ USE PHOTO CACHE
+
+        content_y = header_height + 40
+
         photo = self.get_photo_from_cache()
-        photo_pos = (80, content_y)
-        
-        draw.rectangle([photo_pos[0]-5, photo_pos[1]-5, 
-                       photo_pos[0]+355, photo_pos[1]+455], 
+        photo_x = 70
+
+        left_panel_width = 430
+        left_panel_height = 740
+        draw.rounded_rectangle([photo_x - 20, content_y - 10,
+                               photo_x - 20 + left_panel_width,
+                               content_y - 10 + left_panel_height],
+                              radius=28, fill=self.colors["white"], outline=self.colors["navy"], width=4)
+
+        photo_pos = (photo_x, content_y + 10)
+        draw.rectangle([photo_pos[0]-8, photo_pos[1]-8,
+                       photo_pos[0]+360, photo_pos[1]+460],
                       fill=self.colors["navy"])
-        
         card.paste(photo, photo_pos)
-        
-        info_x = 520
-        info_y = content_y + 40
-        gap = 110
-        
-        details = [
-            ("STUDENT NAME", student_data['full_name']),
-            ("ID NUMBER", student_id),
-            ("PROGRAM", student_data['program']),
-            ("TERM", student_data['term']),
-            ("ISSUE DATE", student_data['doc_date'].strftime('%d %B %Y')),
-            ("VALID UNTIL", student_data['exp_date'].strftime('%d %B %Y'))
-        ]
-        
-        for i, (label, value) in enumerate(details):
-            y = info_y + (i * gap)
-            draw.text((info_x, y), label, fill=self.colors["navy"], font=fonts['label'])
-            draw.text((info_x, y + 30), value, fill=self.colors["black"], font=fonts['name'])
-            draw.line([info_x, y + 80, info_x + 800, y + 80], 
-                     fill=self.colors["gray"], width=2)
+
+        info_block_y = photo_pos[1] + 480
+        draw.text((photo_x + 10, info_block_y), "STUDENT", fill=self.colors["gray"], font=fonts['label'])
+        draw.text((photo_x + 10, info_block_y + 32), student_data['full_name'], fill=self.colors["black"], font=fonts['name'])
+
+        draw.text((photo_x + 10, info_block_y + 78), "ID NUMBER", fill=self.colors["gray"], font=fonts['label'])
+        draw.text((photo_x + 10, info_block_y + 110), student_id, fill=self.colors["navy"], font=fonts['value'])
+
+        draw.text((photo_x + 10, info_block_y + 156), "TERM", fill=self.colors["gray"], font=fonts['label'])
+        draw.text((photo_x + 10, info_block_y + 188), student_data['term'], fill=self.colors["black"], font=fonts['value'])
+
+        right_panel_x = photo_x + left_panel_width + 40
+        right_panel_width = width - right_panel_x - 70
+
+        section_top = content_y
+        section_gap = 26
+
+        draw.rounded_rectangle([right_panel_x, section_top,
+                               right_panel_x + right_panel_width, section_top + 340],
+                              radius=24, fill=self.colors["white"], outline=self.colors["navy"], width=4)
+
+        draw.text((right_panel_x + 20, section_top + 20), "INSTITUTION", fill=self.colors["gray"], font=fonts['label'])
+        draw.text((right_panel_x + 20, section_top + 52), college_name, fill=self.colors["black"], font=fonts['name'])
+
+        draw.text((right_panel_x + 20, section_top + 52 + section_gap), "PROGRAM", fill=self.colors["gray"], font=fonts['label'])
+        draw.text((right_panel_x + 20, section_top + 52 + section_gap + 32), student_data['program'], fill=self.colors["navy"], font=fonts['value'])
+
+        draw.text((right_panel_x + 20, section_top + 52 + section_gap*2 + 10), "ACADEMIC YEAR", fill=self.colors["gray"], font=fonts['label'])
+        draw.text((right_panel_x + 20, section_top + 52 + section_gap*2 + 42), f"{self.current_year}-{self.current_year+1}", fill=self.colors["black"], font=fonts['value'])
+
+        timeline_top = section_top + 360
+        draw.rounded_rectangle([right_panel_x, timeline_top,
+                               right_panel_x + right_panel_width, timeline_top + 210],
+                              radius=24, fill=self.colors["white"], outline=self.colors["navy"], width=4)
+
+        draw.text((right_panel_x + 20, timeline_top + 20), "ISSUE DATE", fill=self.colors["gray"], font=fonts['label'])
+        draw.text((right_panel_x + 20, timeline_top + 52), student_data['doc_date'].strftime('%d %B %Y'), fill=self.colors["black"], font=fonts['value'])
+
+        draw.text((right_panel_x + 20, timeline_top + 98), "VALID UNTIL", fill=self.colors["gray"], font=fonts['label'])
+        draw.text((right_panel_x + 20, timeline_top + 130), student_data['exp_date'].strftime('%d %B %Y'), fill=self.colors["navy"], font=fonts['value'])
+
+        qr_y = timeline_top + 10
+        qr_x = right_panel_x + right_panel_width - 240
         
         # ⚡ QR Code (optional - can be disabled for even more speed)
         try:
@@ -925,10 +954,7 @@ class UnlimitedIDCardGenerator:
             qr.make(fit=True)
             qr_img = qr.make_image(fill_color="black", back_color="white").convert("RGB").resize((200, 200))
             
-            qr_x = width - 280
-            qr_y = content_y + 300
-            
-            draw.rectangle([qr_x-5, qr_y-5, qr_x+205, qr_y+205], 
+            draw.rectangle([qr_x-5, qr_y-5, qr_x+205, qr_y+205],
                           fill=self.colors["navy"])
             
             card.paste(qr_img, (qr_x, qr_y))
@@ -1003,7 +1029,7 @@ class UnlimitedIDCardGenerator:
         print(f"\n⚡⚡⚡⚡⚡ Generating {quantity} IDs for {config['flag']} {config['name']}")
         print(f"✅ {len(self.all_colleges)} colleges available")
         print(f"✅ Using EXACT names from JSON (zero modifications)")
-        print(f"✅ Dates within 30 days (SheerID verified)")
+        print(f"✅ Dates within 90 days (SheerID verified)")
         print(f"✅ Large logos (300x300)")
         print(f"⚡⚡⚡⚡⚡ ULTRA MEGA FAST: 5000 workers, 250 sessions, 1000 batch")
         print(f"⚡⚡⚡⚡⚡ TARGET: 2000+ IDs per minute (10K in 5 min)")
@@ -1056,7 +1082,7 @@ class UnlimitedIDCardGenerator:
         print(f"📁 Folder: {self.receipts_dir}/")
         print(f"📄 Students: {self.students_file}")
         print(f"✅ NAMES: Exact from JSON (no modifications)")
-        print(f"✅ DATES: Within 30 days (SheerID)")
+        print(f"✅ DATES: Within 90 days (SheerID)")
         print(f"✅ LOGOS: 300x300 (prominent)")
         print("="*70)
 
@@ -1099,7 +1125,7 @@ def main():
     print("📅 2025-11-11 19:29:07 UTC")
     print("👤 Adeebaabkhan")
     print("✅ EXACT NAMES: Uses JSON college names as-is (ZERO changes)")
-    print("✅ DATES: Within 30 days (SheerID requirement)")
+    print("✅ DATES: Within 90 days (SheerID requirement)")
     print("✅ LARGE LOGO: 300x300 prominent display")
     print("✅ FORMAT: STUDENTID_COLLEGEID.png")
     print("✅ SAVE: students.txt + receipts/")
