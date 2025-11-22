@@ -990,6 +990,43 @@ def add_user_inline_input(update: Update, context: CallbackContext):
         update.message.reply_text("❌ Only the super admin can add users")
         return ADD_USER_INPUT
 
+def add_super_admin_command(update: Update, context: CallbackContext):
+    uid = update.effective_user.id
+    if not is_super_admin(uid):
+        update.message.reply_text("❌ Only the super admin can promote users")
+        return
+
+    if not context.args:
+        update.message.reply_text("Usage: /addsuper <user_id> [username] [first name]")
+        return
+
+    try:
+        target_id = int(context.args[0])
+    except ValueError:
+        update.message.reply_text("❌ user_id must be a number")
+        return
+
+    username = context.args[1].lstrip('@') if len(context.args) > 1 else None
+    first_name = ' '.join(context.args[2:]) if len(context.args) > 2 else None
+
+    existing = get_authorized_user(target_id)
+    label = username or first_name or str(target_id)
+
+    if add_super_admin(target_id, username=username, first_name=first_name, added_by=uid):
+        if existing:
+            status = "promoted to super admin" if not existing.get('is_super_admin') else "already a super admin"
+            update.message.reply_text(f"✅ {label} {status}")
+        else:
+            update.message.reply_text(f"✅ Added {label} as a super admin")
+    else:
+        update.message.reply_text("❌ Could not promote user. Check logs for details.")
+
+def add_user_inline_input(update: Update, context: CallbackContext):
+    uid = update.effective_user.id
+    if not is_super_admin(uid):
+        update.message.reply_text("❌ Only the super admin can add users")
+        return ADD_USER_INPUT
+
     parts = update.message.text.split()
     if not parts:
         update.message.reply_text("Usage: user_id [username] [first name]\n\n/cancel")
