@@ -246,6 +246,53 @@ def is_authorized(uid):
     except:
         return False
 
+def get_authorized_user(uid):
+    """Return authorized user record as a dict or None."""
+    try:
+        conn = sqlite3.connect('bot.db')
+        c = conn.cursor()
+        c.execute(
+            'SELECT user_id, username, first_name, added_by, added_at, is_active FROM authorized_users WHERE user_id = ?',
+            (uid,),
+        )
+        row = c.fetchone()
+        conn.close()
+        if not row:
+            return None
+        return {
+            'user_id': row[0],
+            'username': row[1],
+            'first_name': row[2],
+            'added_by': row[3],
+            'added_at': row[4],
+            'is_active': row[5],
+        }
+    except Exception as e:
+        logger.error(f"❌ Failed to fetch authorized user {uid}: {e}")
+        return None
+
+def add_authorized_user(user_id, username=None, first_name=None, added_by=None):
+    try:
+        conn = sqlite3.connect('bot.db')
+        c = conn.cursor()
+        c.execute(
+            'INSERT OR REPLACE INTO authorized_users (user_id, username, first_name, added_by, added_at, is_active) VALUES (?, ?, ?, ?, ?, 1)',
+            (
+                int(user_id),
+                username or '',
+                first_name or '',
+                added_by or 0,
+                now().strftime('%Y-%m-%d %H:%M:%S'),
+            ),
+        )
+        conn.commit()
+        conn.close()
+        logger.info(f"✅ Added/updated authorized user {user_id}")
+        return True
+    except Exception as e:
+        logger.error(f"❌ Failed to add user {user_id}: {e}")
+        return False
+
 def get_last_country(uid):
     """Get user's last used country"""
     try:
@@ -366,48 +413,95 @@ def gen_salary_receipt_auto(school_name, teacher_name, teacher_id, profession, c
     cfg = COUNTRIES.get(country_code, COUNTRIES['IN'])
     base_salary = random.randint(*cfg['salary'])
     allowances = int(base_salary * 0.4)
-    net_salary = base_salary + allowances
-    width, height = 900, 680
+    bonus = int(base_salary * 0.05)
+    tax = int(base_salary * 0.08)
+    deductions = int(base_salary * 0.03)
+    insurance = int(base_salary * 0.02)
+    net_salary = base_salary + allowances + bonus - tax - deductions - insurance
+    today = datetime.now()
+    width, height = 900, 760
     img = Image.new('RGB', (width, height), WHITE)
     d = ImageDraw.Draw(img)
-    d.rectangle([(0, 0), (width, 120)], fill=DARK_GRAY)
+    d.rectangle([(0, 0), (width, 140)], fill=DARK_GRAY)
     logo_x, logo_y = 30, 20
     logo_size = 80
     d.rectangle([(logo_x, logo_y), (logo_x + logo_size, logo_y + logo_size)], fill=WHITE, outline=DARK_GRAY, width=2)
     abbr = ''.join([w[0] for w in school_name.split()[:3]]).upper()[:3]
     d.text((logo_x + logo_size // 2, logo_y + logo_size // 2), abbr, fill=DARK_GRAY, font=get_font(28, True), anchor='mm')
-    d.text((logo_x + logo_size + 25, 30), school_name.upper(), fill=WHITE, font=get_font(19, True))
-    d.text((width - 30, 50), "OFFICIAL SALARY RECEIPT", fill=GOLD, font=get_font(16, True), anchor='rt')
-    y = 145
-    d.line([(30, y), (width - 30, y)], fill=BORDER_GRAY, width=1)
-    y = 165
+    d.text((logo_x + logo_size + 25, 30), school_name.upper(), fill=WHITE, font=get_font(20, True))
+    d.text((logo_x + logo_size + 25, 65), f"{cfg['flag']} {cfg['name']}", fill=GOLD, font=get_font(13))
+    d.text((width - 30, 45), "MONTHLY PAYSLIP", fill=GOLD, font=get_font(17, True), anchor='rt')
+    d.text((width - 30, 75), "Verified Copy", fill=WHITE, font=get_font(11), anchor='rt')
+    y = 155
+    d.rectangle([(30, y), (width - 30, y + 50)], outline=BORDER_GRAY, width=1, fill=LIGHT_GRAY)
+    pay_period_start = datetime(today.year, today.month, 1)
+    pay_period_end = datetime(today.year, today.month, 28) + timedelta(days=2)
+    pay_period_end = pay_period_end.replace(day=1) - timedelta(days=1)
+    d.text((40, y + 12), f"Payment For: {pay_period_start.strftime('%b %d, %Y')} - {pay_period_end.strftime('%b %d, %Y')}", fill=BLACK, font=get_font(12, True))
+    d.text((width - 40, y + 12), f"Issued: {today.strftime('%b %d, %Y')}", fill=BLACK, font=get_font(12, True), anchor='rt')
+    d.text((40, y + 30), "Payment Method: Direct Deposit", fill=BLACK, font=get_font(11))
+    d.text((width - 40, y + 30), "Currency: {cfg['symbol']}", fill=BLACK, font=get_font(11), anchor='rt')
+    y = y + 75
     receipt_no = f"RCP/{country_code}/{random.randint(100000, 999999)}"
     d.text((40, y), f"Receipt No: {receipt_no}", fill=BLACK, font=get_font(12, True))
-    today = datetime.now()
-    d.text((width - 40, y), f"Date: {today.strftime('%m/%d/%Y')}", fill=BLACK, font=get_font(12, True), anchor='rt')
-    y = 210
-    d.text((40, y), "Teacher Details:", fill=BLACK, font=get_font(14, True))
-    y = 245
-    d.text((40, y), "Name:", fill=BLACK, font=get_font(12, True))
-    d.text((200, y), teacher_name.upper(), fill=BLUE, font=get_font(13, True))
-    y += 35
-    d.text((40, y), "ID:", fill=BLACK, font=get_font(12, True))
-    d.text((200, y), teacher_id, fill=RED, font=get_font(13, True))
-    y += 35
-    d.text((40, y), "Profession:", fill=BLACK, font=get_font(12, True))
-    d.text((200, y), profession, fill=BLACK, font=get_font(12))
-    y = 245
-    d.text((520, y), "Base Salary:", fill=BLACK, font=get_font(12, True))
-    d.text((700, y), f"{cfg['symbol']}{base_salary:,}", fill=GREEN, font=get_font(13, True))
-    y += 35
-    d.text((520, y), "Allowances:", fill=BLACK, font=get_font(12, True))
-    d.text((700, y), f"{cfg['symbol']}{allowances:,}", fill=GREEN, font=get_font(13, True))
-    y += 35
-    d.rectangle([(515, y - 5), (width - 40, y + 30)], fill=GREEN, outline=BLUE, width=2)
-    d.text((520, y), "Net Salary:", fill=WHITE, font=get_font(12, True))
-    d.text((700, y), f"{cfg['symbol']}{net_salary:,}", fill=WHITE, font=get_font(15, True))
-    y = 460
-    box_height = 110
+    d.text((width - 40, y), f"Document ID: {random.randint(100000, 999999)}", fill=BLACK, font=get_font(12, True), anchor='rt')
+    y = 215
+    d.text((40, y), "Employee Details", fill=DARK_GRAY, font=get_font(14, True))
+    y += 28
+    d.text((40, y), "Name", fill=BLACK, font=get_font(12, True))
+    name_box = [(170, y - 6), (470, y + 32)]
+    d.rounded_rectangle(name_box, radius=6, fill=WHITE, outline=BLUE, width=2)
+    d.text(((name_box[0][0] + name_box[1][0]) // 2, y + 12), teacher_name.upper(), fill=BLUE, font=get_font(15, True), anchor='mm')
+    d.text((520, y), "Employee ID", fill=BLACK, font=get_font(12, True))
+    id_box = [(660, y - 6), (840, y + 32)]
+    d.rounded_rectangle(id_box, radius=6, fill=WHITE, outline=RED, width=2)
+    d.text(((id_box[0][0] + id_box[1][0]) // 2, y + 12), teacher_id, fill=RED, font=get_font(14, True), anchor='mm')
+    y += 32
+    d.text((40, y), "Role", fill=BLACK, font=get_font(12, True))
+    d.text((180, y), profession, fill=BLACK, font=get_font(12))
+    d.text((520, y), "Department", fill=BLACK, font=get_font(12, True))
+    d.text((700, y), f"{profession.split()[0]} Dept", fill=BLACK, font=get_font(12))
+
+    y += 60
+    d.text((40, y), "Earnings", fill=DARK_GRAY, font=get_font(14, True))
+    d.text((520, y), "Deductions", fill=DARK_GRAY, font=get_font(14, True))
+    y += 25
+    # Earnings
+    d.text((40, y), "Base Salary", fill=BLACK, font=get_font(12))
+    d.text((260, y), f"{cfg['symbol']}{base_salary:,}", fill=GREEN, font=get_font(12, True), anchor='rt')
+    y += 22
+    d.text((40, y), "Allowances", fill=BLACK, font=get_font(12))
+    d.text((260, y), f"{cfg['symbol']}{allowances:,}", fill=GREEN, font=get_font(12, True), anchor='rt')
+    y += 22
+    d.text((40, y), "Bonus", fill=BLACK, font=get_font(12))
+    d.text((260, y), f"{cfg['symbol']}{bonus:,}", fill=GREEN, font=get_font(12, True), anchor='rt')
+    earnings_total = base_salary + allowances + bonus
+
+    # Deductions
+    y = 328
+    d.text((520, y), "Tax (8%)", fill=BLACK, font=get_font(12))
+    d.text((760, y), f"-{cfg['symbol']}{tax:,}", fill=RED, font=get_font(12, True), anchor='rt')
+    y += 22
+    d.text((520, y), "Pension", fill=BLACK, font=get_font(12))
+    d.text((760, y), f"-{cfg['symbol']}{deductions:,}", fill=RED, font=get_font(12, True), anchor='rt')
+    y += 22
+    d.text((520, y), "Insurance", fill=BLACK, font=get_font(12))
+    d.text((760, y), f"-{cfg['symbol']}{insurance:,}", fill=RED, font=get_font(12, True), anchor='rt')
+    total_deductions = tax + deductions + insurance
+
+    y += 40
+    d.rectangle([(30, y), (width - 30, y + 60)], outline=BORDER_GRAY, width=2, fill=LIGHT_GRAY)
+    d.text((40, y + 12), "Gross Earnings", fill=BLACK, font=get_font(12, True))
+    d.text((260, y + 12), f"{cfg['symbol']}{earnings_total:,}", fill=BLACK, font=get_font(12, True), anchor='rt')
+    d.text((520, y + 12), "Total Deductions", fill=BLACK, font=get_font(12, True))
+    d.text((760, y + 12), f"-{cfg['symbol']}{total_deductions:,}", fill=BLACK, font=get_font(12, True), anchor='rt')
+    d.text((40, y + 35), "Net Salary", fill=BLACK, font=get_font(13, True))
+    d.text((260, y + 35), f"{cfg['symbol']}{net_salary:,}", fill=BLUE, font=get_font(14, True), anchor='rt')
+    d.text((520, y + 35), "Status", fill=BLACK, font=get_font(13, True))
+    d.text((760, y + 35), "PAID", fill=GREEN, font=get_font(14, True), anchor='rt')
+
+    y += 100
+    box_height = 140
     d.rectangle([(30, y), (width - 30, y + box_height)], outline=GREEN, width=3, fill=LIGHT_GRAY)
     d.rectangle([(30, y), (width - 30, y + 35)], fill=GREEN)
     d.text((40, y + 10), "✅ PAYMENT CONFIRMED", fill=WHITE, font=get_font(14, True))
@@ -415,10 +509,12 @@ def gen_salary_receipt_auto(school_name, teacher_name, teacher_id, profession, c
     bank_ref = f"REF{random.randint(100000, 999999)}"
     d.text((40, y + 55), f"Transaction ID: {txn_id}", fill=BLACK, font=get_font(12, True))
     d.text((40, y + 80), f"Bank Reference: {bank_ref}", fill=BLACK, font=get_font(12, True))
-    d.text((width - 40, y + 55), "Digitally Signed", fill=RED, font=get_font(12, True), anchor='rt')
-    d.text((width - 40, y + 80), "By: A. Kumar", fill=BLACK, font=get_font(11), anchor='rt')
-    y = 650
-    footer_text = f"Generated: {today.strftime('%m/%d/%Y %H:%M:%S')} UTC | Country: {cfg['name']} | Authorized"
+    d.text((40, y + 105), "Payment Channel: ACH", fill=BLACK, font=get_font(11))
+    d.text((width - 220, y + 55), "Authorized Signature", fill=BLACK, font=get_font(11))
+    d.line([(width - 220, y + 90), (width - 40, y + 90)], fill=BORDER_GRAY, width=2)
+    d.text((width - 40, y + 95), "HR Manager", fill=BLACK, font=get_font(10), anchor='rt')
+    y = 720
+    footer_text = f"Generated: {today.strftime('%m/%d/%Y %H:%M:%S')} UTC | Country: {cfg['name']} | Authentic Document"
     d.text((40, y), footer_text, fill=DARK_GRAY, font=get_font(10))
     return img
 
@@ -451,10 +547,14 @@ def gen_teacher_id_auto(school_name, teacher_name, teacher_id, profession, count
     logger.info(f"✅ Teacher photo embedded at ({photo_x}, {photo_y})")
     detail_x = 230
     d.text((detail_x, y), "Name:", fill=BLACK, font=get_font(13, True))
-    d.text((detail_x, y + 28), teacher_name.upper(), fill=BLUE, font=get_font(20, True))
+    name_band = [(detail_x, y + 22), (detail_x + 440, y + 58)]
+    d.rounded_rectangle(name_band, radius=8, fill=WHITE, outline=BLUE, width=2)
+    d.text(((name_band[0][0] + name_band[1][0]) // 2, y + 40), teacher_name.upper(), fill=BLUE, font=get_font(21, True), anchor='mm')
     y += 75
     d.text((detail_x, y), "Teacher ID:", fill=BLACK, font=get_font(13, True))
-    d.text((detail_x, y + 28), teacher_id, fill=RED, font=get_font(18, True))
+    id_band = [(detail_x, y + 22), (detail_x + 300, y + 58)]
+    d.rounded_rectangle(id_band, radius=8, fill=WHITE, outline=RED, width=2)
+    d.text(((id_band[0][0] + id_band[1][0]) // 2, y + 40), teacher_id, fill=RED, font=get_font(19, True), anchor='mm')
     y += 75
     d.text((detail_x, y), "Profession:", fill=BLACK, font=get_font(13, True))
     d.text((detail_x, y + 28), profession, fill=BLACK, font=get_font(12))
@@ -492,8 +592,11 @@ def gen_student_id_auto(school_name, student_name, student_id, program, country_
     width, height = 920, 600
     img = Image.new('RGB', (width, height), WHITE)
     d = ImageDraw.Draw(img)
+    d.rectangle([(0, 0), (width, height)], fill=(247, 248, 250))
+    d.rectangle([(20, 20), (width - 20, height - 20)], outline=BORDER_GRAY, width=2)
     photo = download_real_photo(student_id)
     d.rectangle([(0, 0), (width, 140)], fill=BLUE)
+    d.rectangle([(0, 110), (width, 140)], fill=(14, 71, 161))
     logo_x, logo_y = 30, 20
     logo_size = 100
     d.rectangle([(logo_x, logo_y), (logo_x + logo_size, logo_y + logo_size)], fill=WHITE, outline=BLUE, width=2)
@@ -513,10 +616,14 @@ def gen_student_id_auto(school_name, student_name, student_id, program, country_
     logger.info(f"✅ Student photo embedded at ({photo_x}, {photo_y})")
     detail_x = 230
     d.text((detail_x, y), "Name:", fill=BLACK, font=get_font(13, True))
-    d.text((detail_x, y + 28), student_name.upper(), fill=BLUE, font=get_font(20, True))
+    name_band = [(detail_x, y + 22), (detail_x + 440, y + 58)]
+    d.rounded_rectangle(name_band, radius=8, fill=WHITE, outline=BLUE, width=2)
+    d.text(((name_band[0][0] + name_band[1][0]) // 2, y + 40), student_name.upper(), fill=BLUE, font=get_font(21, True), anchor='mm')
     y += 75
     d.text((detail_x, y), "Student ID:", fill=BLACK, font=get_font(13, True))
-    d.text((detail_x, y + 28), student_id, fill=RED, font=get_font(18, True))
+    id_band = [(detail_x, y + 22), (detail_x + 300, y + 58)]
+    d.rounded_rectangle(id_band, radius=8, fill=WHITE, outline=RED, width=2)
+    d.text(((id_band[0][0] + id_band[1][0]) // 2, y + 40), student_id, fill=RED, font=get_font(19, True), anchor='mm')
     y += 75
     d.text((detail_x, y), "Program:", fill=BLACK, font=get_font(13, True))
     program_short = program[:40] if len(program) > 40 else program
@@ -524,12 +631,21 @@ def gen_student_id_auto(school_name, student_name, student_id, program, country_
     y += 70
     d.text((detail_x, y), "Year:", fill=BLACK, font=get_font(13, True))
     d.text((detail_x, y + 28), "2nd Year", fill=BLACK, font=get_font(12))
+    y += 65
+    d.text((detail_x, y), "Issued By:", fill=BLACK, font=get_font(12, True))
+    d.text((detail_x + 120, y + 25), "Registrar", fill=BLACK, font=get_font(11), anchor='mm')
+    d.line([(detail_x + 60, y + 32), (detail_x + 180, y + 32)], fill=BORDER_GRAY, width=2)
     today = datetime.now()
     expiry = today + timedelta(days=1460)
     d.text((40, photo_y + photo_h + 20), f"Issued: {today.strftime('%m/%d/%Y')}", fill=BLACK, font=get_font(11, True))
     d.text((40, photo_y + photo_h + 42), f"Valid: {expiry.strftime('%m/%d/%Y')}", fill=BLACK, font=get_font(11, True))
     reg_no = f"REG/{country_code}/{random.randint(100000, 999999)}"
     d.text((detail_x, photo_y + photo_h + 20), f"Reg No: {reg_no}", fill=BLACK, font=get_font(11, True))
+    card_no = f"CARD-{random.randint(1000, 9999)}-{random.randint(1000, 9999)}"
+    d.text((detail_x, photo_y + photo_h + 42), f"Card No: {card_no}", fill=BLACK, font=get_font(11, True))
+    holo_x, holo_y = width - 170, photo_y + photo_h - 20
+    d.ellipse([(holo_x, holo_y), (holo_x + 60, holo_y + 60)], fill=(232, 213, 128), outline=GOLD, width=2)
+    d.text((holo_x + 30, holo_y + 30), "VALID", fill=WHITE, font=get_font(10, True), anchor='mm')
     try:
         qr_img = generate_qr_code({'name': student_name, 'id': student_id, 'program': program}, {'name': school_name, 'id': ''}, country_code)
         qr_size = 90
@@ -550,16 +666,72 @@ def gen_student_id_auto(school_name, student_name, student_id, program, country_
 # ============================================================
 # BOT HANDLERS WITH MEMORY & TAP-TO-COPY
 # ============================================================
+def send_main_menu(context: CallbackContext, chat, uid: int, name: str):
+    keyboard = [
+        [InlineKeyboardButton("👨‍🏫 Teachers", callback_data='teacher')],
+        [InlineKeyboardButton("🎓 Students", callback_data='student')],
+        [InlineKeyboardButton("ℹ️ Info", callback_data='info')],
+    ]
+    role = "🔴 SUPER ADMIN" if is_super_admin(uid) else "🟢 User"
+    text = (
+        f"✅ Welcome {name}\nRole: {role}\n\n"
+        f"🤖 100 COUNTRIES BOT\n📸 Real Photos + QR Codes\n🧠 Smart Memory\n📋 Tap-to-Copy Names\n\n"
+        f"📅 {now().strftime('%Y-%m-%d %H:%M:%S')}\n👤 Adeebaabkhan"
+    )
+
+    if chat:
+        chat.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
+    else:
+        context.bot.send_message(chat_id=uid, text=text, reply_markup=InlineKeyboardMarkup(keyboard))
+    return MAIN_MENU
+
+
 def start(update: Update, context: CallbackContext):
     uid = update.effective_user.id
     name = update.effective_user.first_name or "User"
+    message = update.message
+    if not message and update.callback_query:
+        message = update.callback_query.message
+
     if not is_authorized(uid):
-        update.message.reply_text("❌ ACCESS DENIED\n\nContact: @itsmeaab")
+        if message:
+            message.reply_text("❌ ACCESS DENIED\n\nContact: @itsmeaab")
+        else:
+            context.bot.send_message(chat_id=uid, text="❌ ACCESS DENIED\n\nContact: @itsmeaab")
         return ConversationHandler.END
-    keyboard = [[InlineKeyboardButton("👨‍🏫 Teachers", callback_data='teacher')],[InlineKeyboardButton("🎓 Students", callback_data='student')],[InlineKeyboardButton("ℹ️ Info", callback_data='info')]]
-    role = "🔴 SUPER ADMIN" if is_super_admin(uid) else "🟢 User"
-    update.message.reply_text(f"✅ Welcome {name}\nRole: {role}\n\n🤖 100 COUNTRIES BOT\n📸 Real Photos + QR Codes\n🧠 Smart Memory\n📋 Tap-to-Copy Names\n\n📅 {now().strftime('%Y-%m-%d %H:%M:%S')}\n👤 Adeebaabkhan", reply_markup=InlineKeyboardMarkup(keyboard))
-    return MAIN_MENU
+
+    return send_main_menu(context, message, uid, name)
+
+def add_user_command(update: Update, context: CallbackContext):
+    uid = update.effective_user.id
+    if not is_super_admin(uid):
+        update.message.reply_text("❌ Only the super admin can add users")
+        return
+
+    if not context.args:
+        update.message.reply_text("Usage: /adduser <user_id> [username] [first name]")
+        return
+
+    try:
+        target_id = int(context.args[0])
+    except ValueError:
+        update.message.reply_text("❌ user_id must be a number")
+        return
+
+    username = context.args[1].lstrip('@') if len(context.args) > 1 else None
+    first_name = ' '.join(context.args[2:]) if len(context.args) > 2 else None
+
+    existing = get_authorized_user(target_id)
+    label = username or first_name or str(target_id)
+
+    if add_authorized_user(target_id, username=username, first_name=first_name, added_by=uid):
+        if existing:
+            status = "reactivated" if existing.get('is_active') == 0 else "updated"
+            update.message.reply_text(f"✅ {label} {status} and authorized")
+        else:
+            update.message.reply_text(f"✅ Added {label} to authorized users")
+    else:
+        update.message.reply_text("❌ Could not save user. Check logs for details.")
 
 def main_menu(update: Update, context: CallbackContext):
     query = update.callback_query
@@ -959,7 +1131,7 @@ def main():
     
     updater = Updater(BOT_TOKEN, use_context=True)
     dp = updater.dispatcher
-    
+
     conv = ConversationHandler(
         entry_points=[CommandHandler('start', start)],
         states={
@@ -973,8 +1145,9 @@ def main():
         fallbacks=[CommandHandler('cancel', cancel)],
         per_message=False
     )
-    
+
     dp.add_handler(conv)
+    dp.add_handler(CommandHandler('adduser', add_user_command))
     dp.add_error_handler(error_handler)
     
     logger.info("✅ BOT STARTED!")
