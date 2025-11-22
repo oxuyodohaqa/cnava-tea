@@ -874,11 +874,23 @@ def gen_student_id_auto(school_name, student_name, student_id, program, country_
 # BOT HANDLERS WITH MEMORY & TAP-TO-COPY
 # ============================================================
 def send_main_menu(context: CallbackContext, chat, uid: int, name: str):
-    keyboard = [
-        [InlineKeyboardButton("👨‍🏫 Teachers", callback_data='teacher')],
-        [InlineKeyboardButton("🎓 Students", callback_data='student')],
-        [InlineKeyboardButton("ℹ️ Info", callback_data='info')],
-    ]
+    keyboard = []
+
+    if is_super_admin(uid):
+        keyboard.append(
+            [
+                InlineKeyboardButton("➕ Add User", callback_data='add_user'),
+                InlineKeyboardButton("🛡️ Add Super Admin", callback_data='add_super_admin'),
+            ]
+        )
+
+    keyboard.extend(
+        [
+            [InlineKeyboardButton("👨‍🏫 Teachers", callback_data='teacher')],
+            [InlineKeyboardButton("🎓 Students", callback_data='student')],
+            [InlineKeyboardButton("ℹ️ Info", callback_data='info')],
+        ]
+    )
     role = "🔴 SUPER ADMIN" if is_super_admin(uid) else "🟢 User"
     text = (
         f"✅ Welcome {name}\nRole: {role}\n\n"
@@ -978,22 +990,24 @@ def add_user_inline_input(update: Update, context: CallbackContext):
         update.message.reply_text("❌ Only the super admin can add users")
         return ADD_USER_INPUT
 
-    parts = update.message.text.split()
-    if not parts:
-        update.message.reply_text("Usage: user_id [username] [first name]\n\n/cancel")
-        return ADD_USER_INPUT
+def add_super_admin_command(update: Update, context: CallbackContext):
+    uid = update.effective_user.id
+    if not is_super_admin(uid):
+        update.message.reply_text("❌ Only the super admin can promote users")
+        return
+
+    if not context.args:
+        update.message.reply_text("Usage: /addsuper <user_id> [username] [first name]")
+        return
 
     try:
-        target_id = int(parts[0])
+        target_id = int(context.args[0])
     except ValueError:
-        update.message.reply_text("❌ user_id must be a number\n\n/cancel")
-        return ADD_USER_INPUT
+        update.message.reply_text("❌ user_id must be a number")
+        return
 
-    username = parts[1].lstrip('@') if len(parts) > 1 else None
-    first_name = ' '.join(parts[2:]) if len(parts) > 2 else None
-
-    existing = get_authorized_user(target_id)
-    label = username or first_name or str(target_id)
+    username = context.args[1].lstrip('@') if len(context.args) > 1 else None
+    first_name = ' '.join(context.args[2:]) if len(context.args) > 2 else None
 
     existing = get_authorized_user(target_id)
     label = username or first_name or str(target_id)
@@ -1029,51 +1043,28 @@ def add_user_inline_input(update: Update, context: CallbackContext):
 
     existing = get_authorized_user(target_id)
     label = username or first_name or str(target_id)
+    mode = context.user_data.get('add_mode', 'user')
 
-    existing = get_authorized_user(target_id)
-    label = username or first_name or str(target_id)
-
-    if add_super_admin(target_id, username=username, first_name=first_name, added_by=uid):
-        if existing:
-            status = "promoted to super admin" if not existing.get('is_super_admin') else "already a super admin"
-            update.message.reply_text(f"✅ {label} {status}")
+    if mode == 'super_admin':
+        if add_super_admin(target_id, username=username, first_name=first_name, added_by=uid):
+            if existing:
+                status = "promoted to super admin" if not existing.get('is_super_admin') else "already a super admin"
+                update.message.reply_text(f"✅ {label} {status}")
+            else:
+                update.message.reply_text(f"✅ Added {label} as a super admin")
         else:
-            update.message.reply_text(f"✅ Added {label} as a super admin")
+            update.message.reply_text("❌ Could not promote user. Check logs for details.")
     else:
-        update.message.reply_text("❌ Could not promote user. Check logs for details.")
-
-def add_user_inline_input(update: Update, context: CallbackContext):
-    uid = update.effective_user.id
-    if not is_super_admin(uid):
-        update.message.reply_text("❌ Only the super admin can add users")
-        return ADD_USER_INPUT
-
-    parts = update.message.text.split()
-    if not parts:
-        update.message.reply_text("Usage: user_id [username] [first name]\n\n/cancel")
-        return ADD_USER_INPUT
-
-    try:
-        target_id = int(parts[0])
-    except ValueError:
-        update.message.reply_text("❌ user_id must be a number\n\n/cancel")
-        return ADD_USER_INPUT
-
-    username = parts[1].lstrip('@') if len(parts) > 1 else None
-    first_name = ' '.join(parts[2:]) if len(parts) > 2 else None
-
-    existing = get_authorized_user(target_id)
-    label = username or first_name or str(target_id)
-
-    if add_authorized_user(target_id, username=username, first_name=first_name, added_by=uid):
-        if existing:
-            status = "reactivated" if existing.get('is_active') == 0 else "updated"
-            update.message.reply_text(f"✅ {label} {status} and authorized")
+        if add_authorized_user(target_id, username=username, first_name=first_name, added_by=uid):
+            if existing:
+                status = "reactivated" if existing.get('is_active') == 0 else "updated"
+                update.message.reply_text(f"✅ {label} {status} and authorized")
+            else:
+                update.message.reply_text(f"✅ Added {label} to authorized users")
         else:
-            update.message.reply_text(f"✅ Added {label} to authorized users")
-    else:
-        update.message.reply_text("❌ Could not save user. Check logs for details.")
+            update.message.reply_text("❌ Could not save user. Check logs for details.")
 
+    context.user_data['add_mode'] = 'user'
     return ADD_USER_INPUT
 
 def main_menu(update: Update, context: CallbackContext):
@@ -1081,12 +1072,16 @@ def main_menu(update: Update, context: CallbackContext):
     query.answer()
     uid = query.from_user.id
 
-    if query.data == 'add_user':
+    if query.data in ('add_user', 'add_super_admin'):
         if not is_super_admin(uid):
             query.answer("Admins only", show_alert=True)
             return MAIN_MENU
+
+        context.user_data['add_mode'] = 'super_admin' if query.data == 'add_super_admin' else 'user'
+        prompt_title = "🛡️ Promote to super admin" if query.data == 'add_super_admin' else "➕ Add a user"
+
         query.edit_message_text(
-            "➕ Add a user\n\nSend: user_id [username] [first name]\n\n/cancel",
+            f"{prompt_title}\n\nSend: user_id [username] [first name]\n\n/cancel",
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back", callback_data='back')]])
         )
         return ADD_USER_INPUT
