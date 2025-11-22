@@ -1417,25 +1417,13 @@ async function processStudent(student, sessionId, collegeMatcher, deleteManager,
         // STEP 5: Find all student files
         const files = findStudentFiles(student.studentId);
         if (files.length === 0) {
-            console.log(`[${sessionId}] ⚠️ [${countryConfig.flag}] No files found for upload`);
-            
-            // ✅ If SSO already succeeded and no files, still save the link (legitimate)
+            console.log(`[${sessionId}] ⚠️ [${countryConfig.flag}] No files found for ${ssoInstantSuccess || ssoAlreadySuccess ? 'forced ' : ''}upload`);
+
+            // ✅ Force policy: even with SSO success we require an upload
             if (ssoInstantSuccess || ssoAlreadySuccess) {
-                console.log(`[${sessionId}] ✅ [${countryConfig.flag}] SSO success without upload - saving legitimate link`);
-                const spotifyUrl = await session.getSpotifyUrl();
-                
-                if (spotifyUrl) {
-                    const successType = ssoInstantSuccess ? 'instant_exact' : 'already_success_exact';
-                    const result = { student, url: spotifyUrl, type: successType, college: college.name };
-                    saveSpotifyUrl(student, spotifyUrl, session.verificationId, countryConfig, session.getUploadStats());
-                    deleteManager.markStudentSuccess(student.studentId);
-                    collegeMatcher.addSuccess();
-                    statsTracker.recordSuccess(result);
-                    statsTracker.recordCollegeAttempt(college.id, college.name, true);
-                    return result;
-                }
+                console.log(`[${sessionId}] ❌ [${countryConfig.flag}] SSO success without files cannot be accepted — force upload required`);
             }
-            
+
             deleteManager.markStudentFailed(student.studentId);
             collegeMatcher.addFailure();
             statsTracker.recordFailureReason('noFiles');
