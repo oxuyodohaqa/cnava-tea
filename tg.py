@@ -421,6 +421,32 @@ def get_authorized_user(user_id):
         conn = sqlite3.connect('bot.db')
         c = conn.cursor()
         c.execute(
+            'SELECT user_id, username, first_name, added_by, added_at, is_active FROM authorized_users WHERE user_id = ?',
+            (user_id,),
+        )
+        row = c.fetchone()
+        conn.close()
+
+        if not row:
+            return None
+
+        return {
+            'user_id': row[0],
+            'username': row[1],
+            'first_name': row[2],
+            'added_by': row[3],
+            'added_at': row[4],
+            'is_active': row[5],
+        }
+    except Exception as e:
+        logger.error(f"❌ Failed to fetch user {user_id}: {e}")
+        return None
+
+def add_authorized_user(user_id, username=None, first_name=None, added_by=None):
+    try:
+        conn = sqlite3.connect('bot.db')
+        c = conn.cursor()
+        c.execute(
             'SELECT user_id, username, first_name, added_by, added_at, is_active, is_super_admin FROM authorized_users WHERE user_id = ?',
             (user_id,),
         )
@@ -914,25 +940,28 @@ def add_user_command(update: Update, context: CallbackContext):
     else:
         update.message.reply_text("❌ Could not save user. Check logs for details.")
 
-
-def add_super_admin_command(update: Update, context: CallbackContext):
+def add_user_inline_input(update: Update, context: CallbackContext):
     uid = update.effective_user.id
     if not is_super_admin(uid):
-        update.message.reply_text("❌ Only an existing super admin can promote others")
-        return
+        update.message.reply_text("❌ Only the super admin can add users")
+        return ADD_USER_INPUT
 
-    if not context.args:
-        update.message.reply_text("Usage: /addsuper <user_id> [username] [first name]")
-        return
+    parts = update.message.text.split()
+    if not parts:
+        update.message.reply_text("Usage: user_id [username] [first name]\n\n/cancel")
+        return ADD_USER_INPUT
 
     try:
-        target_id = int(context.args[0])
+        target_id = int(parts[0])
     except ValueError:
-        update.message.reply_text("❌ user_id must be a number")
-        return
+        update.message.reply_text("❌ user_id must be a number\n\n/cancel")
+        return ADD_USER_INPUT
 
-    username = context.args[1].lstrip('@') if len(context.args) > 1 else None
-    first_name = ' '.join(context.args[2:]) if len(context.args) > 2 else None
+    username = parts[1].lstrip('@') if len(parts) > 1 else None
+    first_name = ' '.join(parts[2:]) if len(parts) > 2 else None
+
+    existing = get_authorized_user(target_id)
+    label = username or first_name or str(target_id)
 
     existing = get_authorized_user(target_id)
     label = username or first_name or str(target_id)
