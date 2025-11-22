@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-TELEGRAM BOT - 100 COUNTRIES - WITH MEMORY & TAP-TO-COPY
+TELEGRAM BOT - 200+ COUNTRIES - WITH MEMORY & TAP-TO-COPY
 Configuration, Imports, Colors, Countries Dictionary
 Author: Adeebaabkhan
 Date: 2025-10-22 08:38:21 UTC
@@ -58,7 +58,7 @@ TEACHER_PROFESSIONS = [
     'Laboratory Technician', 'Senior Lecturer'
 ]
 
-# 100 COUNTRIES
+# 100 COUNTRIES BASE
 COUNTRIES = {
     'US': {'name': 'United States', 'flag': '🇺🇸', 'locale': 'en_US', 'symbol': '$', 'salary': (35000, 120000), 'json': 'sheerid_us.json'},
     'IN': {'name': 'India', 'flag': '🇮🇳', 'locale': 'en_US', 'symbol': '₹', 'salary': (300000, 2000000), 'json': 'sheerid_in.json'},
@@ -192,6 +192,142 @@ COUNTRIES = {
     'ER': {'name': 'Eritrea', 'flag': '🇪🇷', 'locale': 'en_US', 'symbol': 'Nfk', 'salary': (100000, 500000), 'json': 'sheerid_er.json'},
 }
 
+# Additional countries to push the list past 200 options
+EXTRA_COUNTRIES = {
+    'AD': {'name': 'Andorra', 'flag': '🇦🇩', 'locale': 'en_US', 'symbol': '€', 'salary': (32000, 90000), 'json': 'sheerid_ad.json'},
+    'AL': {'name': 'Albania', 'flag': '🇦🇱', 'locale': 'en_US', 'symbol': 'L', 'salary': (250000, 900000), 'json': 'sheerid_al.json'},
+    'AM': {'name': 'Armenia', 'flag': '🇦🇲', 'locale': 'en_US', 'symbol': '֏', 'salary': (1800000, 6000000), 'json': 'sheerid_am.json'},
+    'AT': {'name': 'Austria', 'flag': '🇦🇹', 'locale': 'en_US', 'symbol': '€', 'salary': (32000, 110000), 'json': 'sheerid_at.json'},
+    'AZ': {'name': 'Azerbaijan', 'flag': '🇦🇿', 'locale': 'en_US', 'symbol': '₼', 'salary': (15000, 60000), 'json': 'sheerid_az.json'},
+    'BA': {'name': 'Bosnia and Herzegovina', 'flag': '🇧🇦', 'locale': 'en_US', 'symbol': 'KM', 'salary': (15000, 50000), 'json': 'sheerid_ba.json'},
+    'BD': {'name': 'Bangladesh', 'flag': '🇧🇩', 'locale': 'en_US', 'symbol': '৳', 'salary': (300000, 1200000), 'json': 'sheerid_bd.json'},
+    'BE': {'name': 'Belgium', 'flag': '🇧🇪', 'locale': 'en_US', 'symbol': '€', 'salary': (35000, 110000), 'json': 'sheerid_be.json'},
+    'BH': {'name': 'Bahrain', 'flag': '🇧🇭', 'locale': 'en_US', 'symbol': 'ب.د', 'salary': (12000, 65000), 'json': 'sheerid_bh.json'},
+    'BN': {'name': 'Brunei', 'flag': '🇧🇳', 'locale': 'en_US', 'symbol': 'B$', 'salary': (30000, 150000), 'json': 'sheerid_bn.json'},
+    'BT': {'name': 'Bhutan', 'flag': '🇧🇹', 'locale': 'en_US', 'symbol': 'Nu.', 'salary': (200000, 800000), 'json': 'sheerid_bt.json'},
+    'BW2': {'name': 'Botswana (North)', 'flag': '🇧🇼', 'locale': 'en_US', 'symbol': 'P', 'salary': (120000, 520000), 'json': 'sheerid_bw2.json'},
+    'BY': {'name': 'Belarus', 'flag': '🇧🇾', 'locale': 'en_US', 'symbol': 'Br', 'salary': (120000, 500000), 'json': 'sheerid_by.json'},
+    'CH': {'name': 'Switzerland', 'flag': '🇨🇭', 'locale': 'en_US', 'symbol': 'CHF', 'salary': (60000, 150000), 'json': 'sheerid_ch.json'},
+    'CL': {'name': 'Chile', 'flag': '🇨🇱', 'locale': 'en_US', 'symbol': '$', 'salary': (8000000, 20000000), 'json': 'sheerid_cl.json'},
+    'CO': {'name': 'Colombia', 'flag': '🇨🇴', 'locale': 'en_US', 'symbol': '$', 'salary': (10000000, 40000000), 'json': 'sheerid_co.json'},
+    'CR2': {'name': 'Costa Rica Pacific', 'flag': '🇨🇷', 'locale': 'en_US', 'symbol': '₡', 'salary': (600000, 2400000), 'json': 'sheerid_cr2.json'},
+    'CU2': {'name': 'Cuba (Isla de la Juventud)', 'flag': '🇨🇺', 'locale': 'en_US', 'symbol': '₱', 'salary': (260, 900), 'json': 'sheerid_cu2.json'},
+    'CY': {'name': 'Cyprus', 'flag': '🇨🇾', 'locale': 'en_US', 'symbol': '€', 'salary': (28000, 95000), 'json': 'sheerid_cy.json'},
+    'CZ': {'name': 'Czechia', 'flag': '🇨🇿', 'locale': 'en_US', 'symbol': 'Kč', 'salary': (300000, 900000), 'json': 'sheerid_cz.json'},
+    'DK': {'name': 'Denmark', 'flag': '🇩🇰', 'locale': 'en_US', 'symbol': 'kr', 'salary': (400000, 1200000), 'json': 'sheerid_dk.json'},
+    'EE': {'name': 'Estonia', 'flag': '🇪🇪', 'locale': 'en_US', 'symbol': '€', 'salary': (28000, 80000), 'json': 'sheerid_ee.json'},
+    'EG': {'name': 'Egypt', 'flag': '🇪🇬', 'locale': 'en_US', 'symbol': '£', 'salary': (120000, 600000), 'json': 'sheerid_eg.json'},
+    'FI': {'name': 'Finland', 'flag': '🇫🇮', 'locale': 'en_US', 'symbol': '€', 'salary': (32000, 100000), 'json': 'sheerid_fi.json'},
+    'FO': {'name': 'Faroe Islands', 'flag': '🇫🇴', 'locale': 'en_US', 'symbol': 'kr', 'salary': (350000, 900000), 'json': 'sheerid_fo.json'},
+    'GE': {'name': 'Georgia', 'flag': '🇬🇪', 'locale': 'en_US', 'symbol': '₾', 'salary': (20000, 90000), 'json': 'sheerid_ge.json'},
+    'GL': {'name': 'Greenland', 'flag': '🇬🇱', 'locale': 'en_US', 'symbol': 'kr', 'salary': (400000, 1100000), 'json': 'sheerid_gl.json'},
+    'GN': {'name': 'Guinea', 'flag': '🇬🇳', 'locale': 'en_US', 'symbol': 'Fr', 'salary': (500000, 1600000), 'json': 'sheerid_gn.json'},
+    'GR': {'name': 'Greece', 'flag': '🇬🇷', 'locale': 'en_US', 'symbol': '€', 'salary': (25000, 80000), 'json': 'sheerid_gr.json'},
+    'GT': {'name': 'Guatemala', 'flag': '🇬🇹', 'locale': 'en_US', 'symbol': 'Q', 'salary': (60000, 200000), 'json': 'sheerid_gt.json'},
+    'HN': {'name': 'Honduras', 'flag': '🇭🇳', 'locale': 'en_US', 'symbol': 'L', 'salary': (8000, 35000), 'json': 'sheerid_hn.json'},
+    'HR': {'name': 'Croatia', 'flag': '🇭🇷', 'locale': 'en_US', 'symbol': '€', 'salary': (24000, 85000), 'json': 'sheerid_hr.json'},
+    'HT': {'name': 'Haiti', 'flag': '🇭🇹', 'locale': 'en_US', 'symbol': 'G', 'salary': (2000, 8000), 'json': 'sheerid_ht.json'},
+    'HU': {'name': 'Hungary', 'flag': '🇭🇺', 'locale': 'en_US', 'symbol': 'Ft', 'salary': (5000000, 15000000), 'json': 'sheerid_hu.json'},
+    'IE': {'name': 'Ireland', 'flag': '🇮🇪', 'locale': 'en_US', 'symbol': '€', 'salary': (32000, 100000), 'json': 'sheerid_ie.json'},
+    'IL': {'name': 'Israel', 'flag': '🇮🇱', 'locale': 'en_US', 'symbol': '₪', 'salary': (100000, 450000), 'json': 'sheerid_il.json'},
+    'IQ': {'name': 'Iraq', 'flag': '🇮🇶', 'locale': 'en_US', 'symbol': 'ع.د', 'salary': (400000, 1800000), 'json': 'sheerid_iq.json'},
+    'IR': {'name': 'Iran', 'flag': '🇮🇷', 'locale': 'en_US', 'symbol': '﷼', 'salary': (60000000, 200000000), 'json': 'sheerid_ir.json'},
+    'IS': {'name': 'Iceland', 'flag': '🇮🇸', 'locale': 'en_US', 'symbol': 'kr', 'salary': (5000000, 15000000), 'json': 'sheerid_is.json'},
+    'JO': {'name': 'Jordan', 'flag': '🇯🇴', 'locale': 'en_US', 'symbol': 'د.ا', 'salary': (12000, 50000), 'json': 'sheerid_jo.json'},
+    'KE': {'name': 'Kenya', 'flag': '🇰🇪', 'locale': 'en_US', 'symbol': 'KSh', 'salary': (600000, 2000000), 'json': 'sheerid_ke.json'},
+    'KG': {'name': 'Kyrgyzstan', 'flag': '🇰🇬', 'locale': 'en_US', 'symbol': 'с', 'salary': (200000, 900000), 'json': 'sheerid_kg.json'},
+    'KH': {'name': 'Cambodia', 'flag': '🇰🇭', 'locale': 'en_US', 'symbol': '៛', 'salary': (4000000, 12000000), 'json': 'sheerid_kh.json'},
+    'KM': {'name': 'Comoros', 'flag': '🇰🇲', 'locale': 'en_US', 'symbol': 'Fr', 'salary': (300000, 900000), 'json': 'sheerid_km.json'},
+    'KW': {'name': 'Kuwait', 'flag': '🇰🇼', 'locale': 'en_US', 'symbol': 'د.ك', 'salary': (15000, 90000), 'json': 'sheerid_kw.json'},
+    'KZ': {'name': 'Kazakhstan', 'flag': '🇰🇿', 'locale': 'en_US', 'symbol': '₸', 'salary': (4000000, 18000000), 'json': 'sheerid_kz.json'},
+    'LB': {'name': 'Lebanon', 'flag': '🇱🇧', 'locale': 'en_US', 'symbol': 'ل.ل', 'salary': (8000000, 20000000), 'json': 'sheerid_lb.json'},
+    'LI': {'name': 'Liechtenstein', 'flag': '🇱🇮', 'locale': 'en_US', 'symbol': 'CHF', 'salary': (50000, 150000), 'json': 'sheerid_li.json'},
+    'LK': {'name': 'Sri Lanka', 'flag': '🇱🇰', 'locale': 'en_US', 'symbol': 'Rs', 'salary': (600000, 2000000), 'json': 'sheerid_lk.json'},
+    'LT': {'name': 'Lithuania', 'flag': '🇱🇹', 'locale': 'en_US', 'symbol': '€', 'salary': (24000, 85000), 'json': 'sheerid_lt.json'},
+    'LU': {'name': 'Luxembourg', 'flag': '🇱🇺', 'locale': 'en_US', 'symbol': '€', 'salary': (40000, 140000), 'json': 'sheerid_lu.json'},
+    'LV': {'name': 'Latvia', 'flag': '🇱🇻', 'locale': 'en_US', 'symbol': '€', 'salary': (23000, 80000), 'json': 'sheerid_lv.json'},
+    'MA': {'name': 'Morocco', 'flag': '🇲🇦', 'locale': 'en_US', 'symbol': 'د.م.', 'salary': (70000, 300000), 'json': 'sheerid_ma.json'},
+    'MD': {'name': 'Moldova', 'flag': '🇲🇩', 'locale': 'en_US', 'symbol': 'L', 'salary': (60000, 220000), 'json': 'sheerid_md.json'},
+    'ME': {'name': 'Montenegro', 'flag': '🇲🇪', 'locale': 'en_US', 'symbol': '€', 'salary': (20000, 70000), 'json': 'sheerid_me.json'},
+    'MK': {'name': 'North Macedonia', 'flag': '🇲🇰', 'locale': 'en_US', 'symbol': 'ден', 'salary': (300000, 900000), 'json': 'sheerid_mk.json'},
+    'MN': {'name': 'Mongolia', 'flag': '🇲🇳', 'locale': 'en_US', 'symbol': '₮', 'salary': (8000000, 22000000), 'json': 'sheerid_mn.json'},
+    'MT': {'name': 'Malta', 'flag': '🇲🇹', 'locale': 'en_US', 'symbol': '€', 'salary': (28000, 85000), 'json': 'sheerid_mt.json'},
+    'MV': {'name': 'Maldives', 'flag': '🇲🇻', 'locale': 'en_US', 'symbol': 'Rf', 'salary': (100000, 500000), 'json': 'sheerid_mv.json'},
+    'MX2': {'name': 'Mexico (North)', 'flag': '🇲🇽', 'locale': 'en_US', 'symbol': '$', 'salary': (150000, 450000), 'json': 'sheerid_mx2.json'},
+    'MY2': {'name': 'Malaysia (Borneo)', 'flag': '🇲🇾', 'locale': 'en_US', 'symbol': 'RM', 'salary': (38000, 110000), 'json': 'sheerid_my2.json'},
+    'NG': {'name': 'Nigeria', 'flag': '🇳🇬', 'locale': 'en_US', 'symbol': '₦', 'salary': (500000, 2000000), 'json': 'sheerid_ng.json'},
+    'NI': {'name': 'Nicaragua', 'flag': '🇳🇮', 'locale': 'en_US', 'symbol': 'C$', 'salary': (8000, 25000), 'json': 'sheerid_ni.json'},
+    'NP': {'name': 'Nepal', 'flag': '🇳🇵', 'locale': 'en_US', 'symbol': '₨', 'salary': (200000, 900000), 'json': 'sheerid_np.json'},
+    'OM': {'name': 'Oman', 'flag': '🇴🇲', 'locale': 'en_US', 'symbol': '﷼', 'salary': (15000, 90000), 'json': 'sheerid_om.json'},
+    'PL': {'name': 'Poland', 'flag': '🇵🇱', 'locale': 'en_US', 'symbol': 'zł', 'salary': (70000, 260000), 'json': 'sheerid_pl.json'},
+    'PR': {'name': 'Puerto Rico', 'flag': '🇵🇷', 'locale': 'en_US', 'symbol': '$', 'salary': (28000, 90000), 'json': 'sheerid_pr.json'},
+    'PT': {'name': 'Portugal', 'flag': '🇵🇹', 'locale': 'en_US', 'symbol': '€', 'salary': (22000, 75000), 'json': 'sheerid_pt.json'},
+    'QA': {'name': 'Qatar', 'flag': '🇶🇦', 'locale': 'en_US', 'symbol': 'ر.ق', 'salary': (20000, 120000), 'json': 'sheerid_qa.json'},
+    'RO': {'name': 'Romania', 'flag': '🇷🇴', 'locale': 'en_US', 'symbol': 'lei', 'salary': (50000, 180000), 'json': 'sheerid_ro.json'},
+    'RS': {'name': 'Serbia', 'flag': '🇷🇸', 'locale': 'en_US', 'symbol': 'дин', 'salary': (400000, 1200000), 'json': 'sheerid_rs.json'},
+    'RW2': {'name': 'Rwanda Highlands', 'flag': '🇷🇼', 'locale': 'en_US', 'symbol': 'FRw', 'salary': (700000, 2400000), 'json': 'sheerid_rw2.json'},
+    'SB': {'name': 'Solomon Islands', 'flag': '🇸🇧', 'locale': 'en_US', 'symbol': '$', 'salary': (60000, 200000), 'json': 'sheerid_sb.json'},
+    'SI': {'name': 'Slovenia', 'flag': '🇸🇮', 'locale': 'en_US', 'symbol': '€', 'salary': (24000, 85000), 'json': 'sheerid_si.json'},
+    'SK': {'name': 'Slovakia', 'flag': '🇸🇰', 'locale': 'en_US', 'symbol': '€', 'salary': (24000, 85000), 'json': 'sheerid_sk.json'},
+    'SL': {'name': 'Sierra Leone', 'flag': '🇸🇱', 'locale': 'en_US', 'symbol': 'Le', 'salary': (500000, 2000000), 'json': 'sheerid_sl.json'},
+    'SM': {'name': 'San Marino', 'flag': '🇸🇲', 'locale': 'en_US', 'symbol': '€', 'salary': (25000, 85000), 'json': 'sheerid_sm.json'},
+    'SO': {'name': 'Somalia', 'flag': '🇸🇴', 'locale': 'en_US', 'symbol': 'Sh', 'salary': (500000, 2000000), 'json': 'sheerid_so.json'},
+    'SS': {'name': 'South Sudan', 'flag': '🇸🇸', 'locale': 'en_US', 'symbol': '£', 'salary': (500000, 2000000), 'json': 'sheerid_ss.json'},
+    'ST': {'name': 'Sao Tome and Principe', 'flag': '🇸🇹', 'locale': 'en_US', 'symbol': 'Db', 'salary': (100000, 400000), 'json': 'sheerid_st.json'},
+    'SV': {'name': 'El Salvador', 'flag': '🇸🇻', 'locale': 'en_US', 'symbol': '$', 'salary': (5000, 20000), 'json': 'sheerid_sv.json'},
+    'TJ': {'name': 'Tajikistan', 'flag': '🇹🇯', 'locale': 'en_US', 'symbol': 'ЅМ', 'salary': (300000, 1100000), 'json': 'sheerid_tj.json'},
+    'TM': {'name': 'Turkmenistan', 'flag': '🇹🇲', 'locale': 'en_US', 'symbol': 'm', 'salary': (200000, 800000), 'json': 'sheerid_tm.json'},
+    'TN': {'name': 'Tunisia', 'flag': '🇹🇳', 'locale': 'en_US', 'symbol': 'د.ت', 'salary': (12000, 60000), 'json': 'sheerid_tn.json'},
+    'UA': {'name': 'Ukraine', 'flag': '🇺🇦', 'locale': 'en_US', 'symbol': '₴', 'salary': (120000, 450000), 'json': 'sheerid_ua.json'},
+    'UG2': {'name': 'Uganda West', 'flag': '🇺🇬', 'locale': 'en_US', 'symbol': 'USh', 'salary': (2200000, 9000000), 'json': 'sheerid_ug2.json'},
+    'UY2': {'name': 'Uruguay Coast', 'flag': '🇺🇾', 'locale': 'en_US', 'symbol': '$', 'salary': (320000, 1200000), 'json': 'sheerid_uy2.json'},
+    'UZ': {'name': 'Uzbekistan', 'flag': '🇺🇿', 'locale': 'en_US', 'symbol': 'soʻm', 'salary': (5000000, 20000000), 'json': 'sheerid_uz.json'},
+    'VA': {'name': 'Vatican City', 'flag': '🇻🇦', 'locale': 'en_US', 'symbol': '€', 'salary': (30000, 90000), 'json': 'sheerid_va.json'},
+    'VI': {'name': 'U.S. Virgin Islands', 'flag': '🇻🇮', 'locale': 'en_US', 'symbol': '$', 'salary': (28000, 85000), 'json': 'sheerid_vi.json'},
+    'VN2': {'name': 'Vietnam Highlands', 'flag': '🇻🇳', 'locale': 'en_US', 'symbol': '₫', 'salary': (120000000, 520000000), 'json': 'sheerid_vn2.json'},
+    'WS': {'name': 'Samoa', 'flag': '🇼🇸', 'locale': 'en_US', 'symbol': 'T', 'salary': (20000, 70000), 'json': 'sheerid_ws.json'},
+    'X01': {'name': 'Aruba', 'flag': '🇦🇼', 'locale': 'en_US', 'symbol': 'ƒ', 'salary': (20000, 70000), 'json': ''},
+    'X02': {'name': 'Bermuda', 'flag': '🇧🇲', 'locale': 'en_US', 'symbol': '$', 'salary': (40000, 120000), 'json': ''},
+    'X03': {'name': 'Cayman Islands', 'flag': '🇰🇾', 'locale': 'en_US', 'symbol': '$', 'salary': (35000, 110000), 'json': ''},
+    'X04': {'name': 'Curacao', 'flag': '🇨🇼', 'locale': 'en_US', 'symbol': 'ƒ', 'salary': (25000, 80000), 'json': ''},
+    'X05': {'name': 'Fiji', 'flag': '🇫🇯', 'locale': 'en_US', 'symbol': '$', 'salary': (20000, 70000), 'json': ''},
+    'X06': {'name': 'Gibraltar', 'flag': '🇬🇮', 'locale': 'en_US', 'symbol': '£', 'salary': (28000, 90000), 'json': ''},
+    'X07': {'name': 'Guadeloupe', 'flag': '🇬🇵', 'locale': 'en_US', 'symbol': '€', 'salary': (24000, 85000), 'json': ''},
+    'X08': {'name': 'Guam', 'flag': '🇬🇺', 'locale': 'en_US', 'symbol': '$', 'salary': (28000, 90000), 'json': ''},
+    'X09': {'name': 'Isle of Man', 'flag': '🇮🇲', 'locale': 'en_US', 'symbol': '£', 'salary': (32000, 100000), 'json': ''},
+    'X10': {'name': 'Jersey', 'flag': '🇯🇪', 'locale': 'en_US', 'symbol': '£', 'salary': (32000, 100000), 'json': ''},
+    'X11': {'name': 'Kosovo', 'flag': '🇽🇰', 'locale': 'en_US', 'symbol': '€', 'salary': (20000, 65000), 'json': ''},
+    'X12': {'name': 'La Reunion', 'flag': '🇷🇪', 'locale': 'en_US', 'symbol': '€', 'salary': (24000, 85000), 'json': ''},
+    'X13': {'name': 'Liege Region', 'flag': '🇧🇪', 'locale': 'en_US', 'symbol': '€', 'salary': (28000, 95000), 'json': ''},
+    'X14': {'name': 'Macau', 'flag': '🇲🇴', 'locale': 'en_US', 'symbol': 'MOP$', 'salary': (120000, 450000), 'json': ''},
+    'X15': {'name': 'Martinique', 'flag': '🇲🇶', 'locale': 'en_US', 'symbol': '€', 'salary': (24000, 85000), 'json': ''},
+    'X16': {'name': 'Mayotte', 'flag': '🇾🇹', 'locale': 'en_US', 'symbol': '€', 'salary': (20000, 70000), 'json': ''},
+    'X17': {'name': 'Macao Peninsula', 'flag': '🇲🇴', 'locale': 'en_US', 'symbol': 'MOP$', 'salary': (120000, 450000), 'json': ''},
+    'X18': {'name': 'Monaco Principality', 'flag': '🇲🇨', 'locale': 'en_US', 'symbol': '€', 'salary': (60000, 160000), 'json': ''},
+    'X19': {'name': 'New Caledonia', 'flag': '🇳🇨', 'locale': 'en_US', 'symbol': '₣', 'salary': (24000, 85000), 'json': ''},
+    'X20': {'name': 'Northern Cyprus', 'flag': '🇨🇾', 'locale': 'en_US', 'symbol': '₺', 'salary': (20000, 70000), 'json': ''},
+    'X21': {'name': 'Northern Ireland', 'flag': '🇬🇧', 'locale': 'en_US', 'symbol': '£', 'salary': (25000, 90000), 'json': ''},
+    'X22': {'name': 'Papua New Guinea', 'flag': '🇵🇬', 'locale': 'en_US', 'symbol': 'K', 'salary': (20000, 70000), 'json': ''},
+    'X23': {'name': 'Pitcairn Islands', 'flag': '🇵🇳', 'locale': 'en_US', 'symbol': '$', 'salary': (20000, 70000), 'json': ''},
+    'X24': {'name': 'Qeshm Free Zone', 'flag': '🇮🇷', 'locale': 'en_US', 'symbol': '﷼', 'salary': (70000000, 220000000), 'json': ''},
+    'X25': {'name': 'Saint Pierre and Miquelon', 'flag': '🇵🇲', 'locale': 'en_US', 'symbol': '€', 'salary': (24000, 85000), 'json': ''},
+    'X26': {'name': 'Sint Maarten', 'flag': '🇸🇽', 'locale': 'en_US', 'symbol': 'ƒ', 'salary': (25000, 80000), 'json': ''},
+    'X27': {'name': 'Tahiti', 'flag': '🇵🇫', 'locale': 'en_US', 'symbol': '₣', 'salary': (24000, 85000), 'json': ''},
+    'X28': {'name': 'Tasmania', 'flag': '🇦🇺', 'locale': 'en_US', 'symbol': '$', 'salary': (45000, 130000), 'json': ''},
+    'X29': {'name': 'Tibet', 'flag': '🚩', 'locale': 'en_US', 'symbol': '¥', 'salary': (100000, 500000), 'json': ''},
+    'X30': {'name': 'Tokelau', 'flag': '🇹🇰', 'locale': 'en_US', 'symbol': '$', 'salary': (15000, 50000), 'json': ''},
+    'X31': {'name': 'Turks and Caicos', 'flag': '🇹🇨', 'locale': 'en_US', 'symbol': '$', 'salary': (28000, 90000), 'json': ''},
+    'X32': {'name': 'Wallis and Futuna', 'flag': '🇼🇫', 'locale': 'en_US', 'symbol': '₣', 'salary': (20000, 70000), 'json': ''},
+    'X33': {'name': 'Yukon', 'flag': '🇨🇦', 'locale': 'en_US', 'symbol': '$', 'salary': (42000, 110000), 'json': ''},
+    'X34': {'name': 'Zanzibar', 'flag': '🇹🇿', 'locale': 'en_US', 'symbol': 'TSh', 'salary': (1200000, 5200000), 'json': ''},
+    'YE2': {'name': 'Yemen (South)', 'flag': '🇾🇪', 'locale': 'en_US', 'symbol': '﷼', 'salary': (520000, 2200000), 'json': 'sheerid_ye2.json'},
+    'ZM2': {'name': 'Zambia Copperbelt', 'flag': '🇿🇲', 'locale': 'en_US', 'symbol': 'ZK', 'salary': (6000, 25000), 'json': 'sheerid_zm2.json'},
+    'ZW2': {'name': 'Zimbabwe Midlands', 'flag': '🇿🇼', 'locale': 'en_US', 'symbol': '$', 'salary': (400, 1700), 'json': 'sheerid_zw2.json'},
+}
+
+COUNTRIES.update({k: v for k, v in EXTRA_COUNTRIES.items() if k not in COUNTRIES})
+COUNTRY_COUNT = len(COUNTRIES)
+
 def init_db():
     conn = sqlite3.connect('bot.db')
     c = conn.cursor()
@@ -232,7 +368,7 @@ def init_db():
 
 init_db()
 
-MAIN_MENU, SELECT_DOC, SELECT_COUNTRY, INPUT_SCHOOL, INPUT_QTY, STUDENT_SELECT_COLLEGE = range(6)
+MAIN_MENU, SELECT_DOC, SELECT_COUNTRY, INPUT_SCHOOL, INPUT_QTY, STUDENT_SELECT_COLLEGE, ADD_USER_INPUT = range(7)
 
 def now():
     return datetime.now(timezone.utc)
@@ -740,7 +876,17 @@ def main_menu(update: Update, context: CallbackContext):
     query = update.callback_query
     query.answer()
     uid = query.from_user.id
-    
+
+    if query.data == 'add_user':
+        if not is_super_admin(uid):
+            query.answer("Admins only", show_alert=True)
+            return MAIN_MENU
+        query.edit_message_text(
+            "➕ Add a user\n\nSend: user_id [username] [first name]\n\n/cancel",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back", callback_data='back')]])
+        )
+        return ADD_USER_INPUT
+
     if query.data == 'teacher':
         last_country, last_doc_type = get_last_country(uid)
         if last_country and last_country in COUNTRIES and last_doc_type == 'teacher':
@@ -801,7 +947,7 @@ def main_menu(update: Update, context: CallbackContext):
             "📋 Tap-to-Copy Names\n"
             "📸 Real Photos\n"
             "🔳 QR Codes\n"
-            "🌍 100 Countries\n\n"
+            f"🌍 {COUNTRY_COUNT}+ Countries\n\n"
             "📱 @itsmeaab",
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
@@ -875,7 +1021,7 @@ def select_country(update: Update, context: CallbackContext):
         doc_type = 'tc_' if query.data == 'more_t' else 'sc_'
         keyboard = [[InlineKeyboardButton(f"{v['flag']} {v['name']}", callback_data=f'{doc_type}{k}')] for k, v in countries_list[10:]]
         keyboard.append([InlineKeyboardButton("⬅️ Back", callback_data='back_countries')])
-        query.edit_message_text("🌍 ALL 100 COUNTRIES:", reply_markup=InlineKeyboardMarkup(keyboard))
+        query.edit_message_text(f"🌍 ALL {COUNTRY_COUNT} COUNTRIES:", reply_markup=InlineKeyboardMarkup(keyboard))
         return SELECT_COUNTRY
     elif query.data == 'back_countries':
         if context.user_data.get('type') == 'teacher':
@@ -1129,7 +1275,7 @@ def main():
     logger.info("📋 TAP-TO-COPY: All names copyable")
     logger.info("📸 REAL PHOTOS: thispersondoesnotexist.com")
     logger.info("🔳 QR CODES: Professional")
-    logger.info("🌍 100 COUNTRIES")
+    logger.info(f"🌍 {COUNTRY_COUNT} COUNTRIES")
     logger.info("="*80)
     
     updater = Updater(BOT_TOKEN, use_context=True)
@@ -1144,6 +1290,11 @@ def main():
             INPUT_SCHOOL: [MessageHandler(Filters.text & ~Filters.command, input_school_name), CommandHandler('cancel', cancel)],
             STUDENT_SELECT_COLLEGE: [CallbackQueryHandler(select_student_college)],
             INPUT_QTY: [MessageHandler(Filters.text & ~Filters.command, input_quantity), CommandHandler('cancel', cancel)],
+            ADD_USER_INPUT: [
+                CallbackQueryHandler(main_menu),
+                MessageHandler(Filters.text & ~Filters.command, add_user_inline_input),
+                CommandHandler('cancel', cancel)
+            ],
         },
         fallbacks=[CommandHandler('cancel', cancel)],
         per_message=False
