@@ -343,14 +343,15 @@ def init_db():
     c = conn.cursor()
     # Create table with memory columns
     c.execute('''CREATE TABLE IF NOT EXISTS authorized_users (
-        user_id INTEGER PRIMARY KEY, 
-        username TEXT, 
-        first_name TEXT, 
-        added_by INTEGER, 
-        added_at TEXT, 
+        user_id INTEGER PRIMARY KEY,
+        username TEXT,
+        first_name TEXT,
+        added_by INTEGER,
+        added_at TEXT,
         is_active INTEGER DEFAULT 1,
         last_country TEXT,
-        last_doc_type TEXT
+        last_doc_type TEXT,
+        is_super_admin INTEGER DEFAULT 0
     )''')
     
     # Add columns if they don't exist (for existing databases)
@@ -362,6 +363,10 @@ def init_db():
         c.execute('ALTER TABLE authorized_users ADD COLUMN last_doc_type TEXT')
     except:
         pass
+    try:
+        c.execute('ALTER TABLE authorized_users ADD COLUMN is_super_admin INTEGER DEFAULT 0')
+    except:
+        pass
     
     conn.commit()
     conn.close()
@@ -369,7 +374,7 @@ def init_db():
     try:
         conn = sqlite3.connect('bot.db')
         c = conn.cursor()
-        c.execute('INSERT OR REPLACE INTO authorized_users (user_id, username, first_name, added_by, added_at, is_active) VALUES (?, ?, ?, ?, ?, ?)', 
+        c.execute('INSERT OR REPLACE INTO authorized_users (user_id, username, first_name, added_by, added_at, is_active, is_super_admin) VALUES (?, ?, ?, ?, ?, ?, 1)',
                   (SUPER_ADMIN_ID, 'Adeebaabkhan', 'Adeebaabkhan', 0, datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S'), 1))
         conn.commit()
         conn.close()
@@ -384,7 +389,19 @@ def now():
     return datetime.now(timezone.utc)
 
 def is_super_admin(uid):
-    return int(uid) in ADMIN_IDS
+    if int(uid) in ADMIN_IDS:
+        return True
+
+    try:
+        conn = sqlite3.connect('bot.db')
+        c = conn.cursor()
+        c.execute('SELECT is_super_admin FROM authorized_users WHERE user_id = ?', (uid,))
+        result = c.fetchone()
+        conn.close()
+        return result and result[0] == 1
+    except Exception as e:
+        logger.error(f"❌ Failed to read super admin status for {uid}: {e}")
+        return False
 
 def is_authorized(uid):
     if is_super_admin(uid):
@@ -399,27 +416,67 @@ def is_authorized(uid):
     except:
         return False
 
-def add_authorized_user(user_id, username=None, first_name=None, added_by=None):
+def get_authorized_user(user_id):
     try:
         conn = sqlite3.connect('bot.db')
         c = conn.cursor()
         c.execute(
-            'INSERT OR REPLACE INTO authorized_users (user_id, username, first_name, added_by, added_at, is_active) VALUES (?, ?, ?, ?, ?, 1)',
+            'SELECT user_id, username, first_name, added_by, added_at, is_active, is_super_admin FROM authorized_users WHERE user_id = ?',
+            (user_id,),
+        )
+        row = c.fetchone()
+        conn.close()
+
+        if not row:
+            return None
+
+        return {
+            'user_id': row[0],
+            'username': row[1],
+            'first_name': row[2],
+            'added_by': row[3],
+            'added_at': row[4],
+            'is_active': row[5],
+            'is_super_admin': row[6],
+        }
+    except Exception as e:
+        logger.error(f"❌ Failed to fetch user {user_id}: {e}")
+        return None
+
+def add_authorized_user(user_id, username=None, first_name=None, added_by=None, is_super_admin=False):
+    try:
+        conn = sqlite3.connect('bot.db')
+        c = conn.cursor()
+        c.execute(
+            'INSERT OR REPLACE INTO authorized_users (user_id, username, first_name, added_by, added_at, is_active, is_super_admin) VALUES (?, ?, ?, ?, ?, 1, ?)',
             (
                 int(user_id),
                 username or '',
                 first_name or '',
                 added_by or 0,
                 now().strftime('%Y-%m-%d %H:%M:%S'),
+                1 if is_super_admin else 0,
             ),
         )
         conn.commit()
         conn.close()
         logger.info(f"✅ Added/updated authorized user {user_id}")
+        if is_super_admin:
+            ADMIN_IDS.add(int(user_id))
         return True
     except Exception as e:
         logger.error(f"❌ Failed to add user {user_id}: {e}")
         return False
+
+
+def add_super_admin(user_id, username=None, first_name=None, added_by=None):
+    return add_authorized_user(
+        user_id,
+        username=username,
+        first_name=first_name,
+        added_by=added_by,
+        is_super_admin=True,
+    )
 
 def get_last_country(uid):
     """Get user's last used country"""
@@ -857,14 +914,15 @@ def add_user_command(update: Update, context: CallbackContext):
     else:
         update.message.reply_text("❌ Could not save user. Check logs for details.")
 
-def add_user_command(update: Update, context: CallbackContext):
+
+def add_super_admin_command(update: Update, context: CallbackContext):
     uid = update.effective_user.id
     if not is_super_admin(uid):
-        update.message.reply_text("❌ Only the super admin can add users")
+        update.message.reply_text("❌ Only an existing super admin can promote others")
         return
 
     if not context.args:
-        update.message.reply_text("Usage: /adduser <user_id> [username] [first name]")
+        update.message.reply_text("Usage: /addsuper <user_id> [username] [first name]")
         return
 
     try:
@@ -876,11 +934,51 @@ def add_user_command(update: Update, context: CallbackContext):
     username = context.args[1].lstrip('@') if len(context.args) > 1 else None
     first_name = ' '.join(context.args[2:]) if len(context.args) > 2 else None
 
+    existing = get_authorized_user(target_id)
+    label = username or first_name or str(target_id)
+
+    if add_super_admin(target_id, username=username, first_name=first_name, added_by=uid):
+        if existing:
+            status = "promoted to super admin" if not existing.get('is_super_admin') else "already a super admin"
+            update.message.reply_text(f"✅ {label} {status}")
+        else:
+            update.message.reply_text(f"✅ Added {label} as a super admin")
+    else:
+        update.message.reply_text("❌ Could not promote user. Check logs for details.")
+
+def add_user_inline_input(update: Update, context: CallbackContext):
+    uid = update.effective_user.id
+    if not is_super_admin(uid):
+        update.message.reply_text("❌ Only the super admin can add users")
+        return ADD_USER_INPUT
+
+    parts = update.message.text.split()
+    if not parts:
+        update.message.reply_text("Usage: user_id [username] [first name]\n\n/cancel")
+        return ADD_USER_INPUT
+
+    try:
+        target_id = int(parts[0])
+    except ValueError:
+        update.message.reply_text("❌ user_id must be a number\n\n/cancel")
+        return ADD_USER_INPUT
+
+    username = parts[1].lstrip('@') if len(parts) > 1 else None
+    first_name = ' '.join(parts[2:]) if len(parts) > 2 else None
+
+    existing = get_authorized_user(target_id)
+    label = username or first_name or str(target_id)
+
     if add_authorized_user(target_id, username=username, first_name=first_name, added_by=uid):
-        label = username or first_name or target_id
-        update.message.reply_text(f"✅ Added {label} to authorized users")
+        if existing:
+            status = "reactivated" if existing.get('is_active') == 0 else "updated"
+            update.message.reply_text(f"✅ {label} {status} and authorized")
+        else:
+            update.message.reply_text(f"✅ Added {label} to authorized users")
     else:
         update.message.reply_text("❌ Could not save user. Check logs for details.")
+
+    return ADD_USER_INPUT
 
 def main_menu(update: Update, context: CallbackContext):
     query = update.callback_query
@@ -1306,12 +1404,14 @@ def main():
                 CommandHandler('cancel', cancel)
             ],
         },
-        fallbacks=[CommandHandler('cancel', cancel)],
-        per_message=False
+        fallbacks=[CommandHandler('cancel', cancel), CommandHandler('start', start)],
+        per_message=False,
+        allow_reentry=True,
     )
 
     dp.add_handler(conv)
     dp.add_handler(CommandHandler('adduser', add_user_command))
+    dp.add_handler(CommandHandler('addsuper', add_super_admin_command))
     dp.add_error_handler(error_handler)
     
     logger.info("✅ BOT STARTED!")
