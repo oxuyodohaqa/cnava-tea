@@ -20,6 +20,15 @@ import sqlite3
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, MessageHandler, Filters, ConversationHandler, CallbackContext
 
+BOT_TOKEN = os.getenv("BOT_TOKEN", "8233094350:AAEiVBsJ2RtLjlDfQ45ef1wCmRTwWtyNwMk")
+SUPER_ADMIN_ID = 7680006005
+ADMIN_IDS = {SUPER_ADMIN_ID}
+extra_admins = os.getenv("ADMIN_IDS", "").split(",") if os.getenv("ADMIN_IDS") else []
+for admin_id in extra_admins:
+    try:
+        ADMIN_IDS.add(int(admin_id.strip()))
+    except ValueError:
+        logger.warning(f"Skipping invalid admin id in ADMIN_IDS env: {admin_id}")
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -390,31 +399,6 @@ def is_authorized(uid):
     except:
         return False
 
-def get_authorized_user(uid):
-    """Return authorized user record as a dict or None."""
-    try:
-        conn = sqlite3.connect('bot.db')
-        c = conn.cursor()
-        c.execute(
-            'SELECT user_id, username, first_name, added_by, added_at, is_active FROM authorized_users WHERE user_id = ?',
-            (uid,),
-        )
-        row = c.fetchone()
-        conn.close()
-        if not row:
-            return None
-        return {
-            'user_id': row[0],
-            'username': row[1],
-            'first_name': row[2],
-            'added_by': row[3],
-            'added_at': row[4],
-            'is_active': row[5],
-        }
-    except Exception as e:
-        logger.error(f"❌ Failed to fetch authorized user {uid}: {e}")
-        return None
-
 def add_authorized_user(user_id, username=None, first_name=None, added_by=None):
     try:
         conn = sqlite3.connect('bot.db')
@@ -593,14 +577,10 @@ def gen_salary_receipt_auto(school_name, teacher_name, teacher_id, profession, c
     d.text((40, y), "Employee Details", fill=DARK_GRAY, font=get_font(14, True))
     y += 28
     d.text((40, y), "Name", fill=BLACK, font=get_font(12, True))
-    name_box = [(170, y - 6), (470, y + 32)]
-    d.rounded_rectangle(name_box, radius=6, fill=WHITE, outline=BLUE, width=2)
-    d.text(((name_box[0][0] + name_box[1][0]) // 2, y + 12), teacher_name.upper(), fill=BLUE, font=get_font(15, True), anchor='mm')
+    d.text((180, y), teacher_name.upper(), fill=BLUE, font=get_font(13, True))
     d.text((520, y), "Employee ID", fill=BLACK, font=get_font(12, True))
-    id_box = [(660, y - 6), (840, y + 32)]
-    d.rounded_rectangle(id_box, radius=6, fill=WHITE, outline=RED, width=2)
-    d.text(((id_box[0][0] + id_box[1][0]) // 2, y + 12), teacher_id, fill=RED, font=get_font(14, True), anchor='mm')
-    y += 32
+    d.text((700, y), teacher_id, fill=RED, font=get_font(13, True))
+    y += 28
     d.text((40, y), "Role", fill=BLACK, font=get_font(12, True))
     d.text((180, y), profession, fill=BLACK, font=get_font(12))
     d.text((520, y), "Department", fill=BLACK, font=get_font(12, True))
@@ -816,12 +796,10 @@ def send_main_menu(context: CallbackContext, chat, uid: int, name: str):
         [InlineKeyboardButton("🎓 Students", callback_data='student')],
         [InlineKeyboardButton("ℹ️ Info", callback_data='info')],
     ]
-    if is_super_admin(uid):
-        keyboard.append([InlineKeyboardButton("➕ Add User", callback_data='add_user')])
-    role = "🔴 ADMIN" if is_super_admin(uid) else "🟢 User"
+    role = "🔴 SUPER ADMIN" if is_super_admin(uid) else "🟢 User"
     text = (
         f"✅ Welcome {name}\nRole: {role}\n\n"
-        f"🤖 {COUNTRY_COUNT}+ COUNTRIES BOT\n📸 Real Photos + QR Codes\n🧠 Smart Memory\n📋 Tap-to-Copy Names\n\n"
+        f"🤖 100 COUNTRIES BOT\n📸 Real Photos + QR Codes\n🧠 Smart Memory\n📋 Tap-to-Copy Names\n\n"
         f"📅 {now().strftime('%Y-%m-%d %H:%M:%S')}\n👤 Adeebaabkhan"
     )
 
@@ -840,29 +818,18 @@ def start(update: Update, context: CallbackContext):
         message = update.callback_query.message
 
     if not is_authorized(uid):
-        added = add_authorized_user(
-            uid,
-            username=update.effective_user.username,
-            first_name=name,
-            added_by=SUPER_ADMIN_ID,
-        )
-        if not added:
-            if message:
-                message.reply_text("❌ ACCESS DENIED\n\nContact: @itsmeaab")
-            else:
-                context.bot.send_message(chat_id=uid, text="❌ ACCESS DENIED\n\nContact: @itsmeaab")
-            return ConversationHandler.END
         if message:
-            message.reply_text("✅ Instant access granted! Enjoy the bot.")
+            message.reply_text("❌ ACCESS DENIED\n\nContact: @itsmeaab")
         else:
-            context.bot.send_message(chat_id=uid, text="✅ Instant access granted! Enjoy the bot.")
+            context.bot.send_message(chat_id=uid, text="❌ ACCESS DENIED\n\nContact: @itsmeaab")
+        return ConversationHandler.END
 
     return send_main_menu(context, message, uid, name)
 
 def add_user_command(update: Update, context: CallbackContext):
     uid = update.effective_user.id
     if not is_super_admin(uid):
-        update.message.reply_text("❌ Only admins can add users")
+        update.message.reply_text("❌ Only the super admin can add users")
         return
 
     if not context.args:
@@ -890,41 +857,30 @@ def add_user_command(update: Update, context: CallbackContext):
     else:
         update.message.reply_text("❌ Could not save user. Check logs for details.")
 
-
-def add_user_inline_input(update: Update, context: CallbackContext):
+def add_user_command(update: Update, context: CallbackContext):
     uid = update.effective_user.id
-    name = update.effective_user.first_name or "User"
-
     if not is_super_admin(uid):
-        update.message.reply_text("❌ Only super admins can add users")
-        return send_main_menu(context, update.message, uid, name)
+        update.message.reply_text("❌ Only the super admin can add users")
+        return
 
-    parts = update.message.text.strip().split()
-    if not parts:
-        update.message.reply_text("❌ Send: user_id [username] [first name]\n\n/cancel")
-        return ADD_USER_INPUT
+    if not context.args:
+        update.message.reply_text("Usage: /adduser <user_id> [username] [first name]")
+        return
 
     try:
-        target_id = int(parts[0])
+        target_id = int(context.args[0])
     except ValueError:
-        update.message.reply_text("❌ user_id must be a number\n\nSend: user_id [username] [first name]\n\n/cancel")
-        return ADD_USER_INPUT
+        update.message.reply_text("❌ user_id must be a number")
+        return
 
-    username = parts[1].lstrip('@') if len(parts) > 1 else None
-    first_name = ' '.join(parts[2:]) if len(parts) > 2 else None
-    existing = get_authorized_user(target_id)
-    label = username or first_name or str(target_id)
+    username = context.args[1].lstrip('@') if len(context.args) > 1 else None
+    first_name = ' '.join(context.args[2:]) if len(context.args) > 2 else None
 
     if add_authorized_user(target_id, username=username, first_name=first_name, added_by=uid):
-        if existing:
-            status = "reactivated" if existing.get('is_active') == 0 else "updated"
-            update.message.reply_text(f"✅ {label} {status} and authorized")
-        else:
-            update.message.reply_text(f"✅ Added {label} to authorized users")
-        return send_main_menu(context, update.message, uid, name)
-
-    update.message.reply_text("❌ Could not save user. Check logs for details.")
-    return ADD_USER_INPUT
+        label = username or first_name or target_id
+        update.message.reply_text(f"✅ Added {label} to authorized users")
+    else:
+        update.message.reply_text("❌ Could not save user. Check logs for details.")
 
 def main_menu(update: Update, context: CallbackContext):
     query = update.callback_query
