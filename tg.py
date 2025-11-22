@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-TELEGRAM BOT - 100 COUNTRIES - WITH MEMORY & TAP-TO-COPY
+TELEGRAM BOT - 200+ COUNTRIES - WITH MEMORY & TAP-TO-COPY
 Configuration, Imports, Colors, Countries Dictionary
 Author: Adeebaabkhan
 Date: 2025-10-22 08:38:21 UTC
@@ -20,10 +20,18 @@ import sqlite3
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, MessageHandler, Filters, ConversationHandler, CallbackContext
 
-BOT_TOKEN = os.getenv("BOT_TOKEN", "8233094350:AAEiVBsJ2RtLjlDfQ45ef1wCmRTwWtyNwMk")
-SUPER_ADMIN_ID = 7680006005
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+BOT_TOKEN = os.getenv("BOT_TOKEN", "8233094350:AAEiVBsJ2RtLjlDfQ45ef1wCmRTwWtyNwMk")
+SUPER_ADMIN_ID = 7680006005
+ADMIN_IDS = {SUPER_ADMIN_ID}
+extra_admins = os.getenv("ADMIN_IDS", "").split(",") if os.getenv("ADMIN_IDS") else []
+for admin_id in extra_admins:
+    try:
+        ADMIN_IDS.add(int(admin_id.strip()))
+    except ValueError:
+        logger.warning(f"Skipping invalid admin id in ADMIN_IDS env: {admin_id}")
 
 # COLORS
 DARK_GRAY = (58, 74, 92)
@@ -51,7 +59,7 @@ TEACHER_PROFESSIONS = [
     'Laboratory Technician', 'Senior Lecturer'
 ]
 
-# 100 COUNTRIES
+# 100 COUNTRIES BASE
 COUNTRIES = {
     'US': {'name': 'United States', 'flag': '🇺🇸', 'locale': 'en_US', 'symbol': '$', 'salary': (35000, 120000), 'json': 'sheerid_us.json'},
     'IN': {'name': 'India', 'flag': '🇮🇳', 'locale': 'en_US', 'symbol': '₹', 'salary': (300000, 2000000), 'json': 'sheerid_in.json'},
@@ -185,6 +193,142 @@ COUNTRIES = {
     'ER': {'name': 'Eritrea', 'flag': '🇪🇷', 'locale': 'en_US', 'symbol': 'Nfk', 'salary': (100000, 500000), 'json': 'sheerid_er.json'},
 }
 
+# Additional countries to push the list past 200 options
+EXTRA_COUNTRIES = {
+    'AD': {'name': 'Andorra', 'flag': '🇦🇩', 'locale': 'en_US', 'symbol': '€', 'salary': (32000, 90000), 'json': 'sheerid_ad.json'},
+    'AL': {'name': 'Albania', 'flag': '🇦🇱', 'locale': 'en_US', 'symbol': 'L', 'salary': (250000, 900000), 'json': 'sheerid_al.json'},
+    'AM': {'name': 'Armenia', 'flag': '🇦🇲', 'locale': 'en_US', 'symbol': '֏', 'salary': (1800000, 6000000), 'json': 'sheerid_am.json'},
+    'AT': {'name': 'Austria', 'flag': '🇦🇹', 'locale': 'en_US', 'symbol': '€', 'salary': (32000, 110000), 'json': 'sheerid_at.json'},
+    'AZ': {'name': 'Azerbaijan', 'flag': '🇦🇿', 'locale': 'en_US', 'symbol': '₼', 'salary': (15000, 60000), 'json': 'sheerid_az.json'},
+    'BA': {'name': 'Bosnia and Herzegovina', 'flag': '🇧🇦', 'locale': 'en_US', 'symbol': 'KM', 'salary': (15000, 50000), 'json': 'sheerid_ba.json'},
+    'BD': {'name': 'Bangladesh', 'flag': '🇧🇩', 'locale': 'en_US', 'symbol': '৳', 'salary': (300000, 1200000), 'json': 'sheerid_bd.json'},
+    'BE': {'name': 'Belgium', 'flag': '🇧🇪', 'locale': 'en_US', 'symbol': '€', 'salary': (35000, 110000), 'json': 'sheerid_be.json'},
+    'BH': {'name': 'Bahrain', 'flag': '🇧🇭', 'locale': 'en_US', 'symbol': 'ب.د', 'salary': (12000, 65000), 'json': 'sheerid_bh.json'},
+    'BN': {'name': 'Brunei', 'flag': '🇧🇳', 'locale': 'en_US', 'symbol': 'B$', 'salary': (30000, 150000), 'json': 'sheerid_bn.json'},
+    'BT': {'name': 'Bhutan', 'flag': '🇧🇹', 'locale': 'en_US', 'symbol': 'Nu.', 'salary': (200000, 800000), 'json': 'sheerid_bt.json'},
+    'BW2': {'name': 'Botswana (North)', 'flag': '🇧🇼', 'locale': 'en_US', 'symbol': 'P', 'salary': (120000, 520000), 'json': 'sheerid_bw2.json'},
+    'BY': {'name': 'Belarus', 'flag': '🇧🇾', 'locale': 'en_US', 'symbol': 'Br', 'salary': (120000, 500000), 'json': 'sheerid_by.json'},
+    'CH': {'name': 'Switzerland', 'flag': '🇨🇭', 'locale': 'en_US', 'symbol': 'CHF', 'salary': (60000, 150000), 'json': 'sheerid_ch.json'},
+    'CL': {'name': 'Chile', 'flag': '🇨🇱', 'locale': 'en_US', 'symbol': '$', 'salary': (8000000, 20000000), 'json': 'sheerid_cl.json'},
+    'CO': {'name': 'Colombia', 'flag': '🇨🇴', 'locale': 'en_US', 'symbol': '$', 'salary': (10000000, 40000000), 'json': 'sheerid_co.json'},
+    'CR2': {'name': 'Costa Rica Pacific', 'flag': '🇨🇷', 'locale': 'en_US', 'symbol': '₡', 'salary': (600000, 2400000), 'json': 'sheerid_cr2.json'},
+    'CU2': {'name': 'Cuba (Isla de la Juventud)', 'flag': '🇨🇺', 'locale': 'en_US', 'symbol': '₱', 'salary': (260, 900), 'json': 'sheerid_cu2.json'},
+    'CY': {'name': 'Cyprus', 'flag': '🇨🇾', 'locale': 'en_US', 'symbol': '€', 'salary': (28000, 95000), 'json': 'sheerid_cy.json'},
+    'CZ': {'name': 'Czechia', 'flag': '🇨🇿', 'locale': 'en_US', 'symbol': 'Kč', 'salary': (300000, 900000), 'json': 'sheerid_cz.json'},
+    'DK': {'name': 'Denmark', 'flag': '🇩🇰', 'locale': 'en_US', 'symbol': 'kr', 'salary': (400000, 1200000), 'json': 'sheerid_dk.json'},
+    'EE': {'name': 'Estonia', 'flag': '🇪🇪', 'locale': 'en_US', 'symbol': '€', 'salary': (28000, 80000), 'json': 'sheerid_ee.json'},
+    'EG': {'name': 'Egypt', 'flag': '🇪🇬', 'locale': 'en_US', 'symbol': '£', 'salary': (120000, 600000), 'json': 'sheerid_eg.json'},
+    'FI': {'name': 'Finland', 'flag': '🇫🇮', 'locale': 'en_US', 'symbol': '€', 'salary': (32000, 100000), 'json': 'sheerid_fi.json'},
+    'FO': {'name': 'Faroe Islands', 'flag': '🇫🇴', 'locale': 'en_US', 'symbol': 'kr', 'salary': (350000, 900000), 'json': 'sheerid_fo.json'},
+    'GE': {'name': 'Georgia', 'flag': '🇬🇪', 'locale': 'en_US', 'symbol': '₾', 'salary': (20000, 90000), 'json': 'sheerid_ge.json'},
+    'GL': {'name': 'Greenland', 'flag': '🇬🇱', 'locale': 'en_US', 'symbol': 'kr', 'salary': (400000, 1100000), 'json': 'sheerid_gl.json'},
+    'GN': {'name': 'Guinea', 'flag': '🇬🇳', 'locale': 'en_US', 'symbol': 'Fr', 'salary': (500000, 1600000), 'json': 'sheerid_gn.json'},
+    'GR': {'name': 'Greece', 'flag': '🇬🇷', 'locale': 'en_US', 'symbol': '€', 'salary': (25000, 80000), 'json': 'sheerid_gr.json'},
+    'GT': {'name': 'Guatemala', 'flag': '🇬🇹', 'locale': 'en_US', 'symbol': 'Q', 'salary': (60000, 200000), 'json': 'sheerid_gt.json'},
+    'HN': {'name': 'Honduras', 'flag': '🇭🇳', 'locale': 'en_US', 'symbol': 'L', 'salary': (8000, 35000), 'json': 'sheerid_hn.json'},
+    'HR': {'name': 'Croatia', 'flag': '🇭🇷', 'locale': 'en_US', 'symbol': '€', 'salary': (24000, 85000), 'json': 'sheerid_hr.json'},
+    'HT': {'name': 'Haiti', 'flag': '🇭🇹', 'locale': 'en_US', 'symbol': 'G', 'salary': (2000, 8000), 'json': 'sheerid_ht.json'},
+    'HU': {'name': 'Hungary', 'flag': '🇭🇺', 'locale': 'en_US', 'symbol': 'Ft', 'salary': (5000000, 15000000), 'json': 'sheerid_hu.json'},
+    'IE': {'name': 'Ireland', 'flag': '🇮🇪', 'locale': 'en_US', 'symbol': '€', 'salary': (32000, 100000), 'json': 'sheerid_ie.json'},
+    'IL': {'name': 'Israel', 'flag': '🇮🇱', 'locale': 'en_US', 'symbol': '₪', 'salary': (100000, 450000), 'json': 'sheerid_il.json'},
+    'IQ': {'name': 'Iraq', 'flag': '🇮🇶', 'locale': 'en_US', 'symbol': 'ع.د', 'salary': (400000, 1800000), 'json': 'sheerid_iq.json'},
+    'IR': {'name': 'Iran', 'flag': '🇮🇷', 'locale': 'en_US', 'symbol': '﷼', 'salary': (60000000, 200000000), 'json': 'sheerid_ir.json'},
+    'IS': {'name': 'Iceland', 'flag': '🇮🇸', 'locale': 'en_US', 'symbol': 'kr', 'salary': (5000000, 15000000), 'json': 'sheerid_is.json'},
+    'JO': {'name': 'Jordan', 'flag': '🇯🇴', 'locale': 'en_US', 'symbol': 'د.ا', 'salary': (12000, 50000), 'json': 'sheerid_jo.json'},
+    'KE': {'name': 'Kenya', 'flag': '🇰🇪', 'locale': 'en_US', 'symbol': 'KSh', 'salary': (600000, 2000000), 'json': 'sheerid_ke.json'},
+    'KG': {'name': 'Kyrgyzstan', 'flag': '🇰🇬', 'locale': 'en_US', 'symbol': 'с', 'salary': (200000, 900000), 'json': 'sheerid_kg.json'},
+    'KH': {'name': 'Cambodia', 'flag': '🇰🇭', 'locale': 'en_US', 'symbol': '៛', 'salary': (4000000, 12000000), 'json': 'sheerid_kh.json'},
+    'KM': {'name': 'Comoros', 'flag': '🇰🇲', 'locale': 'en_US', 'symbol': 'Fr', 'salary': (300000, 900000), 'json': 'sheerid_km.json'},
+    'KW': {'name': 'Kuwait', 'flag': '🇰🇼', 'locale': 'en_US', 'symbol': 'د.ك', 'salary': (15000, 90000), 'json': 'sheerid_kw.json'},
+    'KZ': {'name': 'Kazakhstan', 'flag': '🇰🇿', 'locale': 'en_US', 'symbol': '₸', 'salary': (4000000, 18000000), 'json': 'sheerid_kz.json'},
+    'LB': {'name': 'Lebanon', 'flag': '🇱🇧', 'locale': 'en_US', 'symbol': 'ل.ل', 'salary': (8000000, 20000000), 'json': 'sheerid_lb.json'},
+    'LI': {'name': 'Liechtenstein', 'flag': '🇱🇮', 'locale': 'en_US', 'symbol': 'CHF', 'salary': (50000, 150000), 'json': 'sheerid_li.json'},
+    'LK': {'name': 'Sri Lanka', 'flag': '🇱🇰', 'locale': 'en_US', 'symbol': 'Rs', 'salary': (600000, 2000000), 'json': 'sheerid_lk.json'},
+    'LT': {'name': 'Lithuania', 'flag': '🇱🇹', 'locale': 'en_US', 'symbol': '€', 'salary': (24000, 85000), 'json': 'sheerid_lt.json'},
+    'LU': {'name': 'Luxembourg', 'flag': '🇱🇺', 'locale': 'en_US', 'symbol': '€', 'salary': (40000, 140000), 'json': 'sheerid_lu.json'},
+    'LV': {'name': 'Latvia', 'flag': '🇱🇻', 'locale': 'en_US', 'symbol': '€', 'salary': (23000, 80000), 'json': 'sheerid_lv.json'},
+    'MA': {'name': 'Morocco', 'flag': '🇲🇦', 'locale': 'en_US', 'symbol': 'د.م.', 'salary': (70000, 300000), 'json': 'sheerid_ma.json'},
+    'MD': {'name': 'Moldova', 'flag': '🇲🇩', 'locale': 'en_US', 'symbol': 'L', 'salary': (60000, 220000), 'json': 'sheerid_md.json'},
+    'ME': {'name': 'Montenegro', 'flag': '🇲🇪', 'locale': 'en_US', 'symbol': '€', 'salary': (20000, 70000), 'json': 'sheerid_me.json'},
+    'MK': {'name': 'North Macedonia', 'flag': '🇲🇰', 'locale': 'en_US', 'symbol': 'ден', 'salary': (300000, 900000), 'json': 'sheerid_mk.json'},
+    'MN': {'name': 'Mongolia', 'flag': '🇲🇳', 'locale': 'en_US', 'symbol': '₮', 'salary': (8000000, 22000000), 'json': 'sheerid_mn.json'},
+    'MT': {'name': 'Malta', 'flag': '🇲🇹', 'locale': 'en_US', 'symbol': '€', 'salary': (28000, 85000), 'json': 'sheerid_mt.json'},
+    'MV': {'name': 'Maldives', 'flag': '🇲🇻', 'locale': 'en_US', 'symbol': 'Rf', 'salary': (100000, 500000), 'json': 'sheerid_mv.json'},
+    'MX2': {'name': 'Mexico (North)', 'flag': '🇲🇽', 'locale': 'en_US', 'symbol': '$', 'salary': (150000, 450000), 'json': 'sheerid_mx2.json'},
+    'MY2': {'name': 'Malaysia (Borneo)', 'flag': '🇲🇾', 'locale': 'en_US', 'symbol': 'RM', 'salary': (38000, 110000), 'json': 'sheerid_my2.json'},
+    'NG': {'name': 'Nigeria', 'flag': '🇳🇬', 'locale': 'en_US', 'symbol': '₦', 'salary': (500000, 2000000), 'json': 'sheerid_ng.json'},
+    'NI': {'name': 'Nicaragua', 'flag': '🇳🇮', 'locale': 'en_US', 'symbol': 'C$', 'salary': (8000, 25000), 'json': 'sheerid_ni.json'},
+    'NP': {'name': 'Nepal', 'flag': '🇳🇵', 'locale': 'en_US', 'symbol': '₨', 'salary': (200000, 900000), 'json': 'sheerid_np.json'},
+    'OM': {'name': 'Oman', 'flag': '🇴🇲', 'locale': 'en_US', 'symbol': '﷼', 'salary': (15000, 90000), 'json': 'sheerid_om.json'},
+    'PL': {'name': 'Poland', 'flag': '🇵🇱', 'locale': 'en_US', 'symbol': 'zł', 'salary': (70000, 260000), 'json': 'sheerid_pl.json'},
+    'PR': {'name': 'Puerto Rico', 'flag': '🇵🇷', 'locale': 'en_US', 'symbol': '$', 'salary': (28000, 90000), 'json': 'sheerid_pr.json'},
+    'PT': {'name': 'Portugal', 'flag': '🇵🇹', 'locale': 'en_US', 'symbol': '€', 'salary': (22000, 75000), 'json': 'sheerid_pt.json'},
+    'QA': {'name': 'Qatar', 'flag': '🇶🇦', 'locale': 'en_US', 'symbol': 'ر.ق', 'salary': (20000, 120000), 'json': 'sheerid_qa.json'},
+    'RO': {'name': 'Romania', 'flag': '🇷🇴', 'locale': 'en_US', 'symbol': 'lei', 'salary': (50000, 180000), 'json': 'sheerid_ro.json'},
+    'RS': {'name': 'Serbia', 'flag': '🇷🇸', 'locale': 'en_US', 'symbol': 'дин', 'salary': (400000, 1200000), 'json': 'sheerid_rs.json'},
+    'RW2': {'name': 'Rwanda Highlands', 'flag': '🇷🇼', 'locale': 'en_US', 'symbol': 'FRw', 'salary': (700000, 2400000), 'json': 'sheerid_rw2.json'},
+    'SB': {'name': 'Solomon Islands', 'flag': '🇸🇧', 'locale': 'en_US', 'symbol': '$', 'salary': (60000, 200000), 'json': 'sheerid_sb.json'},
+    'SI': {'name': 'Slovenia', 'flag': '🇸🇮', 'locale': 'en_US', 'symbol': '€', 'salary': (24000, 85000), 'json': 'sheerid_si.json'},
+    'SK': {'name': 'Slovakia', 'flag': '🇸🇰', 'locale': 'en_US', 'symbol': '€', 'salary': (24000, 85000), 'json': 'sheerid_sk.json'},
+    'SL': {'name': 'Sierra Leone', 'flag': '🇸🇱', 'locale': 'en_US', 'symbol': 'Le', 'salary': (500000, 2000000), 'json': 'sheerid_sl.json'},
+    'SM': {'name': 'San Marino', 'flag': '🇸🇲', 'locale': 'en_US', 'symbol': '€', 'salary': (25000, 85000), 'json': 'sheerid_sm.json'},
+    'SO': {'name': 'Somalia', 'flag': '🇸🇴', 'locale': 'en_US', 'symbol': 'Sh', 'salary': (500000, 2000000), 'json': 'sheerid_so.json'},
+    'SS': {'name': 'South Sudan', 'flag': '🇸🇸', 'locale': 'en_US', 'symbol': '£', 'salary': (500000, 2000000), 'json': 'sheerid_ss.json'},
+    'ST': {'name': 'Sao Tome and Principe', 'flag': '🇸🇹', 'locale': 'en_US', 'symbol': 'Db', 'salary': (100000, 400000), 'json': 'sheerid_st.json'},
+    'SV': {'name': 'El Salvador', 'flag': '🇸🇻', 'locale': 'en_US', 'symbol': '$', 'salary': (5000, 20000), 'json': 'sheerid_sv.json'},
+    'TJ': {'name': 'Tajikistan', 'flag': '🇹🇯', 'locale': 'en_US', 'symbol': 'ЅМ', 'salary': (300000, 1100000), 'json': 'sheerid_tj.json'},
+    'TM': {'name': 'Turkmenistan', 'flag': '🇹🇲', 'locale': 'en_US', 'symbol': 'm', 'salary': (200000, 800000), 'json': 'sheerid_tm.json'},
+    'TN': {'name': 'Tunisia', 'flag': '🇹🇳', 'locale': 'en_US', 'symbol': 'د.ت', 'salary': (12000, 60000), 'json': 'sheerid_tn.json'},
+    'UA': {'name': 'Ukraine', 'flag': '🇺🇦', 'locale': 'en_US', 'symbol': '₴', 'salary': (120000, 450000), 'json': 'sheerid_ua.json'},
+    'UG2': {'name': 'Uganda West', 'flag': '🇺🇬', 'locale': 'en_US', 'symbol': 'USh', 'salary': (2200000, 9000000), 'json': 'sheerid_ug2.json'},
+    'UY2': {'name': 'Uruguay Coast', 'flag': '🇺🇾', 'locale': 'en_US', 'symbol': '$', 'salary': (320000, 1200000), 'json': 'sheerid_uy2.json'},
+    'UZ': {'name': 'Uzbekistan', 'flag': '🇺🇿', 'locale': 'en_US', 'symbol': 'soʻm', 'salary': (5000000, 20000000), 'json': 'sheerid_uz.json'},
+    'VA': {'name': 'Vatican City', 'flag': '🇻🇦', 'locale': 'en_US', 'symbol': '€', 'salary': (30000, 90000), 'json': 'sheerid_va.json'},
+    'VI': {'name': 'U.S. Virgin Islands', 'flag': '🇻🇮', 'locale': 'en_US', 'symbol': '$', 'salary': (28000, 85000), 'json': 'sheerid_vi.json'},
+    'VN2': {'name': 'Vietnam Highlands', 'flag': '🇻🇳', 'locale': 'en_US', 'symbol': '₫', 'salary': (120000000, 520000000), 'json': 'sheerid_vn2.json'},
+    'WS': {'name': 'Samoa', 'flag': '🇼🇸', 'locale': 'en_US', 'symbol': 'T', 'salary': (20000, 70000), 'json': 'sheerid_ws.json'},
+    'X01': {'name': 'Aruba', 'flag': '🇦🇼', 'locale': 'en_US', 'symbol': 'ƒ', 'salary': (20000, 70000), 'json': ''},
+    'X02': {'name': 'Bermuda', 'flag': '🇧🇲', 'locale': 'en_US', 'symbol': '$', 'salary': (40000, 120000), 'json': ''},
+    'X03': {'name': 'Cayman Islands', 'flag': '🇰🇾', 'locale': 'en_US', 'symbol': '$', 'salary': (35000, 110000), 'json': ''},
+    'X04': {'name': 'Curacao', 'flag': '🇨🇼', 'locale': 'en_US', 'symbol': 'ƒ', 'salary': (25000, 80000), 'json': ''},
+    'X05': {'name': 'Fiji', 'flag': '🇫🇯', 'locale': 'en_US', 'symbol': '$', 'salary': (20000, 70000), 'json': ''},
+    'X06': {'name': 'Gibraltar', 'flag': '🇬🇮', 'locale': 'en_US', 'symbol': '£', 'salary': (28000, 90000), 'json': ''},
+    'X07': {'name': 'Guadeloupe', 'flag': '🇬🇵', 'locale': 'en_US', 'symbol': '€', 'salary': (24000, 85000), 'json': ''},
+    'X08': {'name': 'Guam', 'flag': '🇬🇺', 'locale': 'en_US', 'symbol': '$', 'salary': (28000, 90000), 'json': ''},
+    'X09': {'name': 'Isle of Man', 'flag': '🇮🇲', 'locale': 'en_US', 'symbol': '£', 'salary': (32000, 100000), 'json': ''},
+    'X10': {'name': 'Jersey', 'flag': '🇯🇪', 'locale': 'en_US', 'symbol': '£', 'salary': (32000, 100000), 'json': ''},
+    'X11': {'name': 'Kosovo', 'flag': '🇽🇰', 'locale': 'en_US', 'symbol': '€', 'salary': (20000, 65000), 'json': ''},
+    'X12': {'name': 'La Reunion', 'flag': '🇷🇪', 'locale': 'en_US', 'symbol': '€', 'salary': (24000, 85000), 'json': ''},
+    'X13': {'name': 'Liege Region', 'flag': '🇧🇪', 'locale': 'en_US', 'symbol': '€', 'salary': (28000, 95000), 'json': ''},
+    'X14': {'name': 'Macau', 'flag': '🇲🇴', 'locale': 'en_US', 'symbol': 'MOP$', 'salary': (120000, 450000), 'json': ''},
+    'X15': {'name': 'Martinique', 'flag': '🇲🇶', 'locale': 'en_US', 'symbol': '€', 'salary': (24000, 85000), 'json': ''},
+    'X16': {'name': 'Mayotte', 'flag': '🇾🇹', 'locale': 'en_US', 'symbol': '€', 'salary': (20000, 70000), 'json': ''},
+    'X17': {'name': 'Macao Peninsula', 'flag': '🇲🇴', 'locale': 'en_US', 'symbol': 'MOP$', 'salary': (120000, 450000), 'json': ''},
+    'X18': {'name': 'Monaco Principality', 'flag': '🇲🇨', 'locale': 'en_US', 'symbol': '€', 'salary': (60000, 160000), 'json': ''},
+    'X19': {'name': 'New Caledonia', 'flag': '🇳🇨', 'locale': 'en_US', 'symbol': '₣', 'salary': (24000, 85000), 'json': ''},
+    'X20': {'name': 'Northern Cyprus', 'flag': '🇨🇾', 'locale': 'en_US', 'symbol': '₺', 'salary': (20000, 70000), 'json': ''},
+    'X21': {'name': 'Northern Ireland', 'flag': '🇬🇧', 'locale': 'en_US', 'symbol': '£', 'salary': (25000, 90000), 'json': ''},
+    'X22': {'name': 'Papua New Guinea', 'flag': '🇵🇬', 'locale': 'en_US', 'symbol': 'K', 'salary': (20000, 70000), 'json': ''},
+    'X23': {'name': 'Pitcairn Islands', 'flag': '🇵🇳', 'locale': 'en_US', 'symbol': '$', 'salary': (20000, 70000), 'json': ''},
+    'X24': {'name': 'Qeshm Free Zone', 'flag': '🇮🇷', 'locale': 'en_US', 'symbol': '﷼', 'salary': (70000000, 220000000), 'json': ''},
+    'X25': {'name': 'Saint Pierre and Miquelon', 'flag': '🇵🇲', 'locale': 'en_US', 'symbol': '€', 'salary': (24000, 85000), 'json': ''},
+    'X26': {'name': 'Sint Maarten', 'flag': '🇸🇽', 'locale': 'en_US', 'symbol': 'ƒ', 'salary': (25000, 80000), 'json': ''},
+    'X27': {'name': 'Tahiti', 'flag': '🇵🇫', 'locale': 'en_US', 'symbol': '₣', 'salary': (24000, 85000), 'json': ''},
+    'X28': {'name': 'Tasmania', 'flag': '🇦🇺', 'locale': 'en_US', 'symbol': '$', 'salary': (45000, 130000), 'json': ''},
+    'X29': {'name': 'Tibet', 'flag': '🚩', 'locale': 'en_US', 'symbol': '¥', 'salary': (100000, 500000), 'json': ''},
+    'X30': {'name': 'Tokelau', 'flag': '🇹🇰', 'locale': 'en_US', 'symbol': '$', 'salary': (15000, 50000), 'json': ''},
+    'X31': {'name': 'Turks and Caicos', 'flag': '🇹🇨', 'locale': 'en_US', 'symbol': '$', 'salary': (28000, 90000), 'json': ''},
+    'X32': {'name': 'Wallis and Futuna', 'flag': '🇼🇫', 'locale': 'en_US', 'symbol': '₣', 'salary': (20000, 70000), 'json': ''},
+    'X33': {'name': 'Yukon', 'flag': '🇨🇦', 'locale': 'en_US', 'symbol': '$', 'salary': (42000, 110000), 'json': ''},
+    'X34': {'name': 'Zanzibar', 'flag': '🇹🇿', 'locale': 'en_US', 'symbol': 'TSh', 'salary': (1200000, 5200000), 'json': ''},
+    'YE2': {'name': 'Yemen (South)', 'flag': '🇾🇪', 'locale': 'en_US', 'symbol': '﷼', 'salary': (520000, 2200000), 'json': 'sheerid_ye2.json'},
+    'ZM2': {'name': 'Zambia Copperbelt', 'flag': '🇿🇲', 'locale': 'en_US', 'symbol': 'ZK', 'salary': (6000, 25000), 'json': 'sheerid_zm2.json'},
+    'ZW2': {'name': 'Zimbabwe Midlands', 'flag': '🇿🇼', 'locale': 'en_US', 'symbol': '$', 'salary': (400, 1700), 'json': 'sheerid_zw2.json'},
+}
+
+COUNTRIES.update({k: v for k, v in EXTRA_COUNTRIES.items() if k not in COUNTRIES})
+COUNTRY_COUNT = len(COUNTRIES)
+
 def init_db():
     conn = sqlite3.connect('bot.db')
     c = conn.cursor()
@@ -225,13 +369,13 @@ def init_db():
 
 init_db()
 
-MAIN_MENU, SELECT_DOC, SELECT_COUNTRY, INPUT_SCHOOL, INPUT_QTY, STUDENT_SELECT_COLLEGE = range(6)
+MAIN_MENU, SELECT_DOC, SELECT_COUNTRY, INPUT_SCHOOL, INPUT_QTY, STUDENT_SELECT_COLLEGE, ADD_USER_INPUT = range(7)
 
 def now():
     return datetime.now(timezone.utc)
 
 def is_super_admin(uid):
-    return int(uid) == SUPER_ADMIN_ID
+    return int(uid) in ADMIN_IDS
 
 def is_authorized(uid):
     if is_super_admin(uid):
@@ -244,6 +388,53 @@ def is_authorized(uid):
         conn.close()
         return result and result[0] == 1
     except:
+        return False
+
+def get_authorized_user(uid):
+    """Return authorized user record as a dict or None."""
+    try:
+        conn = sqlite3.connect('bot.db')
+        c = conn.cursor()
+        c.execute(
+            'SELECT user_id, username, first_name, added_by, added_at, is_active FROM authorized_users WHERE user_id = ?',
+            (uid,),
+        )
+        row = c.fetchone()
+        conn.close()
+        if not row:
+            return None
+        return {
+            'user_id': row[0],
+            'username': row[1],
+            'first_name': row[2],
+            'added_by': row[3],
+            'added_at': row[4],
+            'is_active': row[5],
+        }
+    except Exception as e:
+        logger.error(f"❌ Failed to fetch authorized user {uid}: {e}")
+        return None
+
+def add_authorized_user(user_id, username=None, first_name=None, added_by=None):
+    try:
+        conn = sqlite3.connect('bot.db')
+        c = conn.cursor()
+        c.execute(
+            'INSERT OR REPLACE INTO authorized_users (user_id, username, first_name, added_by, added_at, is_active) VALUES (?, ?, ?, ?, ?, 1)',
+            (
+                int(user_id),
+                username or '',
+                first_name or '',
+                added_by or 0,
+                now().strftime('%Y-%m-%d %H:%M:%S'),
+            ),
+        )
+        conn.commit()
+        conn.close()
+        logger.info(f"✅ Added/updated authorized user {user_id}")
+        return True
+    except Exception as e:
+        logger.error(f"❌ Failed to add user {user_id}: {e}")
         return False
 
 def get_last_country(uid):
@@ -366,48 +557,95 @@ def gen_salary_receipt_auto(school_name, teacher_name, teacher_id, profession, c
     cfg = COUNTRIES.get(country_code, COUNTRIES['IN'])
     base_salary = random.randint(*cfg['salary'])
     allowances = int(base_salary * 0.4)
-    net_salary = base_salary + allowances
-    width, height = 900, 680
+    bonus = int(base_salary * 0.05)
+    tax = int(base_salary * 0.08)
+    deductions = int(base_salary * 0.03)
+    insurance = int(base_salary * 0.02)
+    net_salary = base_salary + allowances + bonus - tax - deductions - insurance
+    today = datetime.now()
+    width, height = 900, 760
     img = Image.new('RGB', (width, height), WHITE)
     d = ImageDraw.Draw(img)
-    d.rectangle([(0, 0), (width, 120)], fill=DARK_GRAY)
+    d.rectangle([(0, 0), (width, 140)], fill=DARK_GRAY)
     logo_x, logo_y = 30, 20
     logo_size = 80
     d.rectangle([(logo_x, logo_y), (logo_x + logo_size, logo_y + logo_size)], fill=WHITE, outline=DARK_GRAY, width=2)
     abbr = ''.join([w[0] for w in school_name.split()[:3]]).upper()[:3]
     d.text((logo_x + logo_size // 2, logo_y + logo_size // 2), abbr, fill=DARK_GRAY, font=get_font(28, True), anchor='mm')
-    d.text((logo_x + logo_size + 25, 30), school_name.upper(), fill=WHITE, font=get_font(19, True))
-    d.text((width - 30, 50), "OFFICIAL SALARY RECEIPT", fill=GOLD, font=get_font(16, True), anchor='rt')
-    y = 145
-    d.line([(30, y), (width - 30, y)], fill=BORDER_GRAY, width=1)
-    y = 165
+    d.text((logo_x + logo_size + 25, 30), school_name.upper(), fill=WHITE, font=get_font(20, True))
+    d.text((logo_x + logo_size + 25, 65), f"{cfg['flag']} {cfg['name']}", fill=GOLD, font=get_font(13))
+    d.text((width - 30, 45), "MONTHLY PAYSLIP", fill=GOLD, font=get_font(17, True), anchor='rt')
+    d.text((width - 30, 75), "Verified Copy", fill=WHITE, font=get_font(11), anchor='rt')
+    y = 155
+    d.rectangle([(30, y), (width - 30, y + 50)], outline=BORDER_GRAY, width=1, fill=LIGHT_GRAY)
+    pay_period_start = datetime(today.year, today.month, 1)
+    pay_period_end = datetime(today.year, today.month, 28) + timedelta(days=2)
+    pay_period_end = pay_period_end.replace(day=1) - timedelta(days=1)
+    d.text((40, y + 12), f"Payment For: {pay_period_start.strftime('%b %d, %Y')} - {pay_period_end.strftime('%b %d, %Y')}", fill=BLACK, font=get_font(12, True))
+    d.text((width - 40, y + 12), f"Issued: {today.strftime('%b %d, %Y')}", fill=BLACK, font=get_font(12, True), anchor='rt')
+    d.text((40, y + 30), "Payment Method: Direct Deposit", fill=BLACK, font=get_font(11))
+    d.text((width - 40, y + 30), "Currency: {cfg['symbol']}", fill=BLACK, font=get_font(11), anchor='rt')
+    y = y + 75
     receipt_no = f"RCP/{country_code}/{random.randint(100000, 999999)}"
     d.text((40, y), f"Receipt No: {receipt_no}", fill=BLACK, font=get_font(12, True))
-    today = datetime.now()
-    d.text((width - 40, y), f"Date: {today.strftime('%m/%d/%Y')}", fill=BLACK, font=get_font(12, True), anchor='rt')
-    y = 210
-    d.text((40, y), "Teacher Details:", fill=BLACK, font=get_font(14, True))
-    y = 245
-    d.text((40, y), "Name:", fill=BLACK, font=get_font(12, True))
-    d.text((200, y), teacher_name.upper(), fill=BLUE, font=get_font(13, True))
-    y += 35
-    d.text((40, y), "ID:", fill=BLACK, font=get_font(12, True))
-    d.text((200, y), teacher_id, fill=RED, font=get_font(13, True))
-    y += 35
-    d.text((40, y), "Profession:", fill=BLACK, font=get_font(12, True))
-    d.text((200, y), profession, fill=BLACK, font=get_font(12))
-    y = 245
-    d.text((520, y), "Base Salary:", fill=BLACK, font=get_font(12, True))
-    d.text((700, y), f"{cfg['symbol']}{base_salary:,}", fill=GREEN, font=get_font(13, True))
-    y += 35
-    d.text((520, y), "Allowances:", fill=BLACK, font=get_font(12, True))
-    d.text((700, y), f"{cfg['symbol']}{allowances:,}", fill=GREEN, font=get_font(13, True))
-    y += 35
-    d.rectangle([(515, y - 5), (width - 40, y + 30)], fill=GREEN, outline=BLUE, width=2)
-    d.text((520, y), "Net Salary:", fill=WHITE, font=get_font(12, True))
-    d.text((700, y), f"{cfg['symbol']}{net_salary:,}", fill=WHITE, font=get_font(15, True))
-    y = 460
-    box_height = 110
+    d.text((width - 40, y), f"Document ID: {random.randint(100000, 999999)}", fill=BLACK, font=get_font(12, True), anchor='rt')
+    y = 215
+    d.text((40, y), "Employee Details", fill=DARK_GRAY, font=get_font(14, True))
+    y += 28
+    d.text((40, y), "Name", fill=BLACK, font=get_font(12, True))
+    name_box = [(170, y - 6), (470, y + 32)]
+    d.rounded_rectangle(name_box, radius=6, fill=WHITE, outline=BLUE, width=2)
+    d.text(((name_box[0][0] + name_box[1][0]) // 2, y + 12), teacher_name.upper(), fill=BLUE, font=get_font(15, True), anchor='mm')
+    d.text((520, y), "Employee ID", fill=BLACK, font=get_font(12, True))
+    id_box = [(660, y - 6), (840, y + 32)]
+    d.rounded_rectangle(id_box, radius=6, fill=WHITE, outline=RED, width=2)
+    d.text(((id_box[0][0] + id_box[1][0]) // 2, y + 12), teacher_id, fill=RED, font=get_font(14, True), anchor='mm')
+    y += 32
+    d.text((40, y), "Role", fill=BLACK, font=get_font(12, True))
+    d.text((180, y), profession, fill=BLACK, font=get_font(12))
+    d.text((520, y), "Department", fill=BLACK, font=get_font(12, True))
+    d.text((700, y), f"{profession.split()[0]} Dept", fill=BLACK, font=get_font(12))
+
+    y += 60
+    d.text((40, y), "Earnings", fill=DARK_GRAY, font=get_font(14, True))
+    d.text((520, y), "Deductions", fill=DARK_GRAY, font=get_font(14, True))
+    y += 25
+    # Earnings
+    d.text((40, y), "Base Salary", fill=BLACK, font=get_font(12))
+    d.text((260, y), f"{cfg['symbol']}{base_salary:,}", fill=GREEN, font=get_font(12, True), anchor='rt')
+    y += 22
+    d.text((40, y), "Allowances", fill=BLACK, font=get_font(12))
+    d.text((260, y), f"{cfg['symbol']}{allowances:,}", fill=GREEN, font=get_font(12, True), anchor='rt')
+    y += 22
+    d.text((40, y), "Bonus", fill=BLACK, font=get_font(12))
+    d.text((260, y), f"{cfg['symbol']}{bonus:,}", fill=GREEN, font=get_font(12, True), anchor='rt')
+    earnings_total = base_salary + allowances + bonus
+
+    # Deductions
+    y = 328
+    d.text((520, y), "Tax (8%)", fill=BLACK, font=get_font(12))
+    d.text((760, y), f"-{cfg['symbol']}{tax:,}", fill=RED, font=get_font(12, True), anchor='rt')
+    y += 22
+    d.text((520, y), "Pension", fill=BLACK, font=get_font(12))
+    d.text((760, y), f"-{cfg['symbol']}{deductions:,}", fill=RED, font=get_font(12, True), anchor='rt')
+    y += 22
+    d.text((520, y), "Insurance", fill=BLACK, font=get_font(12))
+    d.text((760, y), f"-{cfg['symbol']}{insurance:,}", fill=RED, font=get_font(12, True), anchor='rt')
+    total_deductions = tax + deductions + insurance
+
+    y += 40
+    d.rectangle([(30, y), (width - 30, y + 60)], outline=BORDER_GRAY, width=2, fill=LIGHT_GRAY)
+    d.text((40, y + 12), "Gross Earnings", fill=BLACK, font=get_font(12, True))
+    d.text((260, y + 12), f"{cfg['symbol']}{earnings_total:,}", fill=BLACK, font=get_font(12, True), anchor='rt')
+    d.text((520, y + 12), "Total Deductions", fill=BLACK, font=get_font(12, True))
+    d.text((760, y + 12), f"-{cfg['symbol']}{total_deductions:,}", fill=BLACK, font=get_font(12, True), anchor='rt')
+    d.text((40, y + 35), "Net Salary", fill=BLACK, font=get_font(13, True))
+    d.text((260, y + 35), f"{cfg['symbol']}{net_salary:,}", fill=BLUE, font=get_font(14, True), anchor='rt')
+    d.text((520, y + 35), "Status", fill=BLACK, font=get_font(13, True))
+    d.text((760, y + 35), "PAID", fill=GREEN, font=get_font(14, True), anchor='rt')
+
+    y += 100
+    box_height = 140
     d.rectangle([(30, y), (width - 30, y + box_height)], outline=GREEN, width=3, fill=LIGHT_GRAY)
     d.rectangle([(30, y), (width - 30, y + 35)], fill=GREEN)
     d.text((40, y + 10), "✅ PAYMENT CONFIRMED", fill=WHITE, font=get_font(14, True))
@@ -415,10 +653,12 @@ def gen_salary_receipt_auto(school_name, teacher_name, teacher_id, profession, c
     bank_ref = f"REF{random.randint(100000, 999999)}"
     d.text((40, y + 55), f"Transaction ID: {txn_id}", fill=BLACK, font=get_font(12, True))
     d.text((40, y + 80), f"Bank Reference: {bank_ref}", fill=BLACK, font=get_font(12, True))
-    d.text((width - 40, y + 55), "Digitally Signed", fill=RED, font=get_font(12, True), anchor='rt')
-    d.text((width - 40, y + 80), "By: A. Kumar", fill=BLACK, font=get_font(11), anchor='rt')
-    y = 650
-    footer_text = f"Generated: {today.strftime('%m/%d/%Y %H:%M:%S')} UTC | Country: {cfg['name']} | Authorized"
+    d.text((40, y + 105), "Payment Channel: ACH", fill=BLACK, font=get_font(11))
+    d.text((width - 220, y + 55), "Authorized Signature", fill=BLACK, font=get_font(11))
+    d.line([(width - 220, y + 90), (width - 40, y + 90)], fill=BORDER_GRAY, width=2)
+    d.text((width - 40, y + 95), "HR Manager", fill=BLACK, font=get_font(10), anchor='rt')
+    y = 720
+    footer_text = f"Generated: {today.strftime('%m/%d/%Y %H:%M:%S')} UTC | Country: {cfg['name']} | Authentic Document"
     d.text((40, y), footer_text, fill=DARK_GRAY, font=get_font(10))
     return img
 
@@ -451,10 +691,14 @@ def gen_teacher_id_auto(school_name, teacher_name, teacher_id, profession, count
     logger.info(f"✅ Teacher photo embedded at ({photo_x}, {photo_y})")
     detail_x = 230
     d.text((detail_x, y), "Name:", fill=BLACK, font=get_font(13, True))
-    d.text((detail_x, y + 28), teacher_name.upper(), fill=BLUE, font=get_font(20, True))
+    name_band = [(detail_x, y + 22), (detail_x + 440, y + 58)]
+    d.rounded_rectangle(name_band, radius=8, fill=WHITE, outline=BLUE, width=2)
+    d.text(((name_band[0][0] + name_band[1][0]) // 2, y + 40), teacher_name.upper(), fill=BLUE, font=get_font(21, True), anchor='mm')
     y += 75
     d.text((detail_x, y), "Teacher ID:", fill=BLACK, font=get_font(13, True))
-    d.text((detail_x, y + 28), teacher_id, fill=RED, font=get_font(18, True))
+    id_band = [(detail_x, y + 22), (detail_x + 300, y + 58)]
+    d.rounded_rectangle(id_band, radius=8, fill=WHITE, outline=RED, width=2)
+    d.text(((id_band[0][0] + id_band[1][0]) // 2, y + 40), teacher_id, fill=RED, font=get_font(19, True), anchor='mm')
     y += 75
     d.text((detail_x, y), "Profession:", fill=BLACK, font=get_font(13, True))
     d.text((detail_x, y + 28), profession, fill=BLACK, font=get_font(12))
@@ -492,8 +736,11 @@ def gen_student_id_auto(school_name, student_name, student_id, program, country_
     width, height = 920, 600
     img = Image.new('RGB', (width, height), WHITE)
     d = ImageDraw.Draw(img)
+    d.rectangle([(0, 0), (width, height)], fill=(247, 248, 250))
+    d.rectangle([(20, 20), (width - 20, height - 20)], outline=BORDER_GRAY, width=2)
     photo = download_real_photo(student_id)
     d.rectangle([(0, 0), (width, 140)], fill=BLUE)
+    d.rectangle([(0, 110), (width, 140)], fill=(14, 71, 161))
     logo_x, logo_y = 30, 20
     logo_size = 100
     d.rectangle([(logo_x, logo_y), (logo_x + logo_size, logo_y + logo_size)], fill=WHITE, outline=BLUE, width=2)
@@ -513,10 +760,14 @@ def gen_student_id_auto(school_name, student_name, student_id, program, country_
     logger.info(f"✅ Student photo embedded at ({photo_x}, {photo_y})")
     detail_x = 230
     d.text((detail_x, y), "Name:", fill=BLACK, font=get_font(13, True))
-    d.text((detail_x, y + 28), student_name.upper(), fill=BLUE, font=get_font(20, True))
+    name_band = [(detail_x, y + 22), (detail_x + 440, y + 58)]
+    d.rounded_rectangle(name_band, radius=8, fill=WHITE, outline=BLUE, width=2)
+    d.text(((name_band[0][0] + name_band[1][0]) // 2, y + 40), student_name.upper(), fill=BLUE, font=get_font(21, True), anchor='mm')
     y += 75
     d.text((detail_x, y), "Student ID:", fill=BLACK, font=get_font(13, True))
-    d.text((detail_x, y + 28), student_id, fill=RED, font=get_font(18, True))
+    id_band = [(detail_x, y + 22), (detail_x + 300, y + 58)]
+    d.rounded_rectangle(id_band, radius=8, fill=WHITE, outline=RED, width=2)
+    d.text(((id_band[0][0] + id_band[1][0]) // 2, y + 40), student_id, fill=RED, font=get_font(19, True), anchor='mm')
     y += 75
     d.text((detail_x, y), "Program:", fill=BLACK, font=get_font(13, True))
     program_short = program[:40] if len(program) > 40 else program
@@ -524,12 +775,21 @@ def gen_student_id_auto(school_name, student_name, student_id, program, country_
     y += 70
     d.text((detail_x, y), "Year:", fill=BLACK, font=get_font(13, True))
     d.text((detail_x, y + 28), "2nd Year", fill=BLACK, font=get_font(12))
+    y += 65
+    d.text((detail_x, y), "Issued By:", fill=BLACK, font=get_font(12, True))
+    d.text((detail_x + 120, y + 25), "Registrar", fill=BLACK, font=get_font(11), anchor='mm')
+    d.line([(detail_x + 60, y + 32), (detail_x + 180, y + 32)], fill=BORDER_GRAY, width=2)
     today = datetime.now()
     expiry = today + timedelta(days=1460)
     d.text((40, photo_y + photo_h + 20), f"Issued: {today.strftime('%m/%d/%Y')}", fill=BLACK, font=get_font(11, True))
     d.text((40, photo_y + photo_h + 42), f"Valid: {expiry.strftime('%m/%d/%Y')}", fill=BLACK, font=get_font(11, True))
     reg_no = f"REG/{country_code}/{random.randint(100000, 999999)}"
     d.text((detail_x, photo_y + photo_h + 20), f"Reg No: {reg_no}", fill=BLACK, font=get_font(11, True))
+    card_no = f"CARD-{random.randint(1000, 9999)}-{random.randint(1000, 9999)}"
+    d.text((detail_x, photo_y + photo_h + 42), f"Card No: {card_no}", fill=BLACK, font=get_font(11, True))
+    holo_x, holo_y = width - 170, photo_y + photo_h - 20
+    d.ellipse([(holo_x, holo_y), (holo_x + 60, holo_y + 60)], fill=(232, 213, 128), outline=GOLD, width=2)
+    d.text((holo_x + 30, holo_y + 30), "VALID", fill=WHITE, font=get_font(10, True), anchor='mm')
     try:
         qr_img = generate_qr_code({'name': student_name, 'id': student_id, 'program': program}, {'name': school_name, 'id': ''}, country_code)
         qr_size = 90
@@ -550,22 +810,137 @@ def gen_student_id_auto(school_name, student_name, student_id, program, country_
 # ============================================================
 # BOT HANDLERS WITH MEMORY & TAP-TO-COPY
 # ============================================================
+def send_main_menu(context: CallbackContext, chat, uid: int, name: str):
+    keyboard = [
+        [InlineKeyboardButton("👨‍🏫 Teachers", callback_data='teacher')],
+        [InlineKeyboardButton("🎓 Students", callback_data='student')],
+        [InlineKeyboardButton("ℹ️ Info", callback_data='info')],
+    ]
+    if is_super_admin(uid):
+        keyboard.append([InlineKeyboardButton("➕ Add User", callback_data='add_user')])
+    role = "🔴 ADMIN" if is_super_admin(uid) else "🟢 User"
+    text = (
+        f"✅ Welcome {name}\nRole: {role}\n\n"
+        f"🤖 {COUNTRY_COUNT}+ COUNTRIES BOT\n📸 Real Photos + QR Codes\n🧠 Smart Memory\n📋 Tap-to-Copy Names\n\n"
+        f"📅 {now().strftime('%Y-%m-%d %H:%M:%S')}\n👤 Adeebaabkhan"
+    )
+
+    if chat:
+        chat.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
+    else:
+        context.bot.send_message(chat_id=uid, text=text, reply_markup=InlineKeyboardMarkup(keyboard))
+    return MAIN_MENU
+
+
 def start(update: Update, context: CallbackContext):
     uid = update.effective_user.id
     name = update.effective_user.first_name or "User"
+    message = update.message
+    if not message and update.callback_query:
+        message = update.callback_query.message
+
     if not is_authorized(uid):
-        update.message.reply_text("❌ ACCESS DENIED\n\nContact: @itsmeaab")
-        return ConversationHandler.END
-    keyboard = [[InlineKeyboardButton("👨‍🏫 Teachers", callback_data='teacher')],[InlineKeyboardButton("🎓 Students", callback_data='student')],[InlineKeyboardButton("ℹ️ Info", callback_data='info')]]
-    role = "🔴 SUPER ADMIN" if is_super_admin(uid) else "🟢 User"
-    update.message.reply_text(f"✅ Welcome {name}\nRole: {role}\n\n🤖 100 COUNTRIES BOT\n📸 Real Photos + QR Codes\n🧠 Smart Memory\n📋 Tap-to-Copy Names\n\n📅 {now().strftime('%Y-%m-%d %H:%M:%S')}\n👤 Adeebaabkhan", reply_markup=InlineKeyboardMarkup(keyboard))
-    return MAIN_MENU
+        added = add_authorized_user(
+            uid,
+            username=update.effective_user.username,
+            first_name=name,
+            added_by=SUPER_ADMIN_ID,
+        )
+        if not added:
+            if message:
+                message.reply_text("❌ ACCESS DENIED\n\nContact: @itsmeaab")
+            else:
+                context.bot.send_message(chat_id=uid, text="❌ ACCESS DENIED\n\nContact: @itsmeaab")
+            return ConversationHandler.END
+        if message:
+            message.reply_text("✅ Instant access granted! Enjoy the bot.")
+        else:
+            context.bot.send_message(chat_id=uid, text="✅ Instant access granted! Enjoy the bot.")
+
+    return send_main_menu(context, message, uid, name)
+
+def add_user_command(update: Update, context: CallbackContext):
+    uid = update.effective_user.id
+    if not is_super_admin(uid):
+        update.message.reply_text("❌ Only admins can add users")
+        return
+
+    if not context.args:
+        update.message.reply_text("Usage: /adduser <user_id> [username] [first name]")
+        return
+
+    try:
+        target_id = int(context.args[0])
+    except ValueError:
+        update.message.reply_text("❌ user_id must be a number")
+        return
+
+    username = context.args[1].lstrip('@') if len(context.args) > 1 else None
+    first_name = ' '.join(context.args[2:]) if len(context.args) > 2 else None
+
+    existing = get_authorized_user(target_id)
+    label = username or first_name or str(target_id)
+
+    if add_authorized_user(target_id, username=username, first_name=first_name, added_by=uid):
+        if existing:
+            status = "reactivated" if existing.get('is_active') == 0 else "updated"
+            update.message.reply_text(f"✅ {label} {status} and authorized")
+        else:
+            update.message.reply_text(f"✅ Added {label} to authorized users")
+    else:
+        update.message.reply_text("❌ Could not save user. Check logs for details.")
+
+
+def add_user_inline_input(update: Update, context: CallbackContext):
+    uid = update.effective_user.id
+    name = update.effective_user.first_name or "User"
+
+    if not is_super_admin(uid):
+        update.message.reply_text("❌ Only super admins can add users")
+        return send_main_menu(context, update.message, uid, name)
+
+    parts = update.message.text.strip().split()
+    if not parts:
+        update.message.reply_text("❌ Send: user_id [username] [first name]\n\n/cancel")
+        return ADD_USER_INPUT
+
+    try:
+        target_id = int(parts[0])
+    except ValueError:
+        update.message.reply_text("❌ user_id must be a number\n\nSend: user_id [username] [first name]\n\n/cancel")
+        return ADD_USER_INPUT
+
+    username = parts[1].lstrip('@') if len(parts) > 1 else None
+    first_name = ' '.join(parts[2:]) if len(parts) > 2 else None
+    existing = get_authorized_user(target_id)
+    label = username or first_name or str(target_id)
+
+    if add_authorized_user(target_id, username=username, first_name=first_name, added_by=uid):
+        if existing:
+            status = "reactivated" if existing.get('is_active') == 0 else "updated"
+            update.message.reply_text(f"✅ {label} {status} and authorized")
+        else:
+            update.message.reply_text(f"✅ Added {label} to authorized users")
+        return send_main_menu(context, update.message, uid, name)
+
+    update.message.reply_text("❌ Could not save user. Check logs for details.")
+    return ADD_USER_INPUT
 
 def main_menu(update: Update, context: CallbackContext):
     query = update.callback_query
     query.answer()
     uid = query.from_user.id
-    
+
+    if query.data == 'add_user':
+        if not is_super_admin(uid):
+            query.answer("Admins only", show_alert=True)
+            return MAIN_MENU
+        query.edit_message_text(
+            "➕ Add a user\n\nSend: user_id [username] [first name]\n\n/cancel",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back", callback_data='back')]])
+        )
+        return ADD_USER_INPUT
+
     if query.data == 'teacher':
         last_country, last_doc_type = get_last_country(uid)
         if last_country and last_country in COUNTRIES and last_doc_type == 'teacher':
@@ -626,7 +1001,7 @@ def main_menu(update: Update, context: CallbackContext):
             "📋 Tap-to-Copy Names\n"
             "📸 Real Photos\n"
             "🔳 QR Codes\n"
-            "🌍 100 Countries\n\n"
+            f"🌍 {COUNTRY_COUNT}+ Countries\n\n"
             "📱 @itsmeaab",
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
@@ -700,7 +1075,7 @@ def select_country(update: Update, context: CallbackContext):
         doc_type = 'tc_' if query.data == 'more_t' else 'sc_'
         keyboard = [[InlineKeyboardButton(f"{v['flag']} {v['name']}", callback_data=f'{doc_type}{k}')] for k, v in countries_list[10:]]
         keyboard.append([InlineKeyboardButton("⬅️ Back", callback_data='back_countries')])
-        query.edit_message_text("🌍 ALL 100 COUNTRIES:", reply_markup=InlineKeyboardMarkup(keyboard))
+        query.edit_message_text(f"🌍 ALL {COUNTRY_COUNT} COUNTRIES:", reply_markup=InlineKeyboardMarkup(keyboard))
         return SELECT_COUNTRY
     elif query.data == 'back_countries':
         if context.user_data.get('type') == 'teacher':
@@ -954,12 +1329,12 @@ def main():
     logger.info("📋 TAP-TO-COPY: All names copyable")
     logger.info("📸 REAL PHOTOS: thispersondoesnotexist.com")
     logger.info("🔳 QR CODES: Professional")
-    logger.info("🌍 100 COUNTRIES")
+    logger.info(f"🌍 {COUNTRY_COUNT} COUNTRIES")
     logger.info("="*80)
     
     updater = Updater(BOT_TOKEN, use_context=True)
     dp = updater.dispatcher
-    
+
     conv = ConversationHandler(
         entry_points=[CommandHandler('start', start)],
         states={
@@ -969,12 +1344,18 @@ def main():
             INPUT_SCHOOL: [MessageHandler(Filters.text & ~Filters.command, input_school_name), CommandHandler('cancel', cancel)],
             STUDENT_SELECT_COLLEGE: [CallbackQueryHandler(select_student_college)],
             INPUT_QTY: [MessageHandler(Filters.text & ~Filters.command, input_quantity), CommandHandler('cancel', cancel)],
+            ADD_USER_INPUT: [
+                CallbackQueryHandler(main_menu),
+                MessageHandler(Filters.text & ~Filters.command, add_user_inline_input),
+                CommandHandler('cancel', cancel)
+            ],
         },
         fallbacks=[CommandHandler('cancel', cancel)],
         per_message=False
     )
-    
+
     dp.add_handler(conv)
+    dp.add_handler(CommandHandler('adduser', add_user_command))
     dp.add_error_handler(error_handler)
     
     logger.info("✅ BOT STARTED!")
