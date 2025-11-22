@@ -22,6 +22,13 @@ from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, MessageH
 
 BOT_TOKEN = os.getenv("BOT_TOKEN", "8233094350:AAEiVBsJ2RtLjlDfQ45ef1wCmRTwWtyNwMk")
 SUPER_ADMIN_ID = 7680006005
+ADMIN_IDS = {SUPER_ADMIN_ID}
+extra_admins = os.getenv("ADMIN_IDS", "").split(",") if os.getenv("ADMIN_IDS") else []
+for admin_id in extra_admins:
+    try:
+        ADMIN_IDS.add(int(admin_id.strip()))
+    except ValueError:
+        logger.warning(f"Skipping invalid admin id in ADMIN_IDS env: {admin_id}")
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -231,7 +238,7 @@ def now():
     return datetime.now(timezone.utc)
 
 def is_super_admin(uid):
-    return int(uid) == SUPER_ADMIN_ID
+    return int(uid) in ADMIN_IDS
 
 def is_authorized(uid):
     if is_super_admin(uid):
