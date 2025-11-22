@@ -1341,8 +1341,9 @@ def main():
                 CommandHandler('cancel', cancel)
             ],
         },
-        fallbacks=[CommandHandler('cancel', cancel)],
-        per_message=False
+        fallbacks=[CommandHandler('cancel', cancel), CommandHandler('start', start)],
+        per_message=False,
+        allow_reentry=True,
     )
 
     dp.add_handler(conv)
