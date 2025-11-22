@@ -690,17 +690,7 @@ class UnlimitedIDCardGenerator:
             return random.choice(self.all_colleges)
 
     def _text_width(self, draw, text, font):
-        """
-        Return the rendered width for a given text and font.
-
-        Args:
-            draw: PIL ImageDraw instance used for measurement.
-            text: The string to measure.
-            font: PIL ImageFont used to render the text.
-
-        Returns:
-            The width in pixels of the rendered text for the provided font.
-        """
+        """Return the rendered width for a given text and font."""
         try:
             return draw.textlength(text, font=font)
         except AttributeError:
@@ -708,18 +698,7 @@ class UnlimitedIDCardGenerator:
             return bbox[2] - bbox[0]
 
     def _split_long_word(self, word, draw, font, max_width):
-        """
-        Split an overlong word into chunks that each fit within ``max_width``.
-
-        Args:
-            word: The single contiguous word to split.
-            draw: PIL ImageDraw instance used for measurement.
-            font: PIL ImageFont used to render the text.
-            max_width: Maximum allowed width for each resulting chunk.
-
-        Returns:
-            A list of contiguous string slices, each of which fits within ``max_width``.
-        """
+        """Split an overlong word into chunks that each fit within max_width."""
         chunks = []
         start = 0
         while start < len(word):
@@ -742,24 +721,7 @@ class UnlimitedIDCardGenerator:
         return chunks
 
     def wrap_text_smart(self, text, font, max_width, draw):
-        """
-        Wrap text into lines that fit ``max_width``, including extremely long inputs.
-
-        This helper keeps per-word width measurements cached so callers can reuse the
-        same ``ImageDraw`` instance without repeatedly recomputing widths. Oversized
-        words are split with :meth:`_split_long_word`, ensuring the function succeeds
-        even when a single token is longer than the available width.
-
-        Args:
-            text: Raw text to wrap. Empty or ``None`` values return an empty list.
-            font: PIL ImageFont used to render the text.
-            max_width: Maximum allowed width for each resulting line.
-            draw: PIL ImageDraw instance used for measurement; shared for caching.
-
-        Returns:
-            A list of wrapped lines. Each line's rendered width is guaranteed to be
-            ``<= max_width`` when drawn with the supplied font and draw context.
-        """
+        """Wrap text into lines that fit max_width, even for very long inputs."""
         if not text:
             return []
 
