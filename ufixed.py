@@ -689,28 +689,78 @@ class UnlimitedIDCardGenerator:
                 return None
             return random.choice(self.all_colleges)
 
+    def _text_width(self, draw, text, font):
+        """Return the rendered width for a given text and font."""
+        try:
+            return draw.textlength(text, font=font)
+        except AttributeError:
+            bbox = draw.textbbox((0, 0), text, font=font)
+            return bbox[2] - bbox[0]
+
+    def _split_long_word(self, word, draw, font, max_width):
+        """Split an overlong word into chunks that each fit within max_width."""
+        chunks = []
+        start = 0
+        while start < len(word):
+            end = len(word)
+            # Binary search for the longest prefix that fits
+            low, high = start + 1, len(word)
+            best = start + 1
+            while low <= high:
+                mid = (low + high) // 2
+                if self._text_width(draw, word[start:mid], font) <= max_width:
+                    best = mid
+                    low = mid + 1
+                else:
+                    high = mid - 1
+            if best == start:
+                # Ensure progress even if a single character exceeds max_width
+                best = start + 1
+            chunks.append(word[start:best])
+            start = best
+        return chunks
+
     def wrap_text_smart(self, text, font, max_width, draw):
+        """Wrap text into lines that fit max_width, even for very long inputs."""
+        if not text:
+            return []
+
         words = text.split()
         lines = []
         current_line = []
-        
+        current_width = 0
+        space_width = self._text_width(draw, " ", font)
+        width_cache = {}
+
         for word in words:
-            test_line = ' '.join(current_line + [word])
-            bbox = draw.textbbox((0, 0), test_line, font=font)
-            w = bbox[2] - bbox[0]
-            
-            if w <= max_width:
-                current_line.append(word)
-            else:
-                if current_line:
-                    lines.append(' '.join(current_line))
-                    current_line = [word]
+            if word not in width_cache:
+                width_cache[word] = self._text_width(draw, word, font)
+            word_width = width_cache[word]
+
+            if not current_line:
+                if word_width <= max_width:
+                    current_line.append(word)
+                    current_width = word_width
                 else:
-                    lines.append(word)
-        
+                    lines.extend(self._split_long_word(word, draw, font, max_width))
+            else:
+                projected_width = current_width + space_width + word_width
+                if projected_width <= max_width:
+                    current_line.append(word)
+                    current_width = projected_width
+                else:
+                    lines.append(' '.join(current_line))
+                    if word_width <= max_width:
+                        current_line = [word]
+                        current_width = word_width
+                    else:
+                        lines.extend(self._split_long_word(word, draw, font, max_width))
+                        current_line = []
+                        current_width = 0
+
         if current_line:
             lines.append(' '.join(current_line))
-        
+
         return lines
 
     def generate_student_data(self, college):
