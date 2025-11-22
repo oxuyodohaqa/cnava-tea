@@ -518,10 +518,14 @@ def gen_teacher_id_auto(school_name, teacher_name, teacher_id, profession, count
     logger.info(f"✅ Teacher photo embedded at ({photo_x}, {photo_y})")
     detail_x = 230
     d.text((detail_x, y), "Name:", fill=BLACK, font=get_font(13, True))
-    d.text((detail_x, y + 28), teacher_name.upper(), fill=BLUE, font=get_font(20, True))
+    name_band = [(detail_x, y + 22), (detail_x + 440, y + 58)]
+    d.rounded_rectangle(name_band, radius=8, fill=WHITE, outline=BLUE, width=2)
+    d.text(((name_band[0][0] + name_band[1][0]) // 2, y + 40), teacher_name.upper(), fill=BLUE, font=get_font(21, True), anchor='mm')
     y += 75
     d.text((detail_x, y), "Teacher ID:", fill=BLACK, font=get_font(13, True))
-    d.text((detail_x, y + 28), teacher_id, fill=RED, font=get_font(18, True))
+    id_band = [(detail_x, y + 22), (detail_x + 300, y + 58)]
+    d.rounded_rectangle(id_band, radius=8, fill=WHITE, outline=RED, width=2)
+    d.text(((id_band[0][0] + id_band[1][0]) // 2, y + 40), teacher_id, fill=RED, font=get_font(19, True), anchor='mm')
     y += 75
     d.text((detail_x, y), "Profession:", fill=BLACK, font=get_font(13, True))
     d.text((detail_x, y + 28), profession, fill=BLACK, font=get_font(12))
@@ -583,10 +587,14 @@ def gen_student_id_auto(school_name, student_name, student_id, program, country_
     logger.info(f"✅ Student photo embedded at ({photo_x}, {photo_y})")
     detail_x = 230
     d.text((detail_x, y), "Name:", fill=BLACK, font=get_font(13, True))
-    d.text((detail_x, y + 28), student_name.upper(), fill=BLUE, font=get_font(20, True))
+    name_band = [(detail_x, y + 22), (detail_x + 440, y + 58)]
+    d.rounded_rectangle(name_band, radius=8, fill=WHITE, outline=BLUE, width=2)
+    d.text(((name_band[0][0] + name_band[1][0]) // 2, y + 40), student_name.upper(), fill=BLUE, font=get_font(21, True), anchor='mm')
     y += 75
     d.text((detail_x, y), "Student ID:", fill=BLACK, font=get_font(13, True))
-    d.text((detail_x, y + 28), student_id, fill=RED, font=get_font(18, True))
+    id_band = [(detail_x, y + 22), (detail_x + 300, y + 58)]
+    d.rounded_rectangle(id_band, radius=8, fill=WHITE, outline=RED, width=2)
+    d.text(((id_band[0][0] + id_band[1][0]) // 2, y + 40), student_id, fill=RED, font=get_font(19, True), anchor='mm')
     y += 75
     d.text((detail_x, y), "Program:", fill=BLACK, font=get_font(13, True))
     program_short = program[:40] if len(program) > 40 else program
@@ -629,16 +637,72 @@ def gen_student_id_auto(school_name, student_name, student_id, program, country_
 # ============================================================
 # BOT HANDLERS WITH MEMORY & TAP-TO-COPY
 # ============================================================
+def send_main_menu(context: CallbackContext, chat, uid: int, name: str):
+    keyboard = [
+        [InlineKeyboardButton("👨‍🏫 Teachers", callback_data='teacher')],
+        [InlineKeyboardButton("🎓 Students", callback_data='student')],
+        [InlineKeyboardButton("ℹ️ Info", callback_data='info')],
+    ]
+    role = "🔴 SUPER ADMIN" if is_super_admin(uid) else "🟢 User"
+    text = (
+        f"✅ Welcome {name}\nRole: {role}\n\n"
+        f"🤖 100 COUNTRIES BOT\n📸 Real Photos + QR Codes\n🧠 Smart Memory\n📋 Tap-to-Copy Names\n\n"
+        f"📅 {now().strftime('%Y-%m-%d %H:%M:%S')}\n👤 Adeebaabkhan"
+    )
+
+    if chat:
+        chat.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
+    else:
+        context.bot.send_message(chat_id=uid, text=text, reply_markup=InlineKeyboardMarkup(keyboard))
+    return MAIN_MENU
+
+
 def start(update: Update, context: CallbackContext):
     uid = update.effective_user.id
     name = update.effective_user.first_name or "User"
+    message = update.message
+    if not message and update.callback_query:
+        message = update.callback_query.message
+
     if not is_authorized(uid):
-        update.message.reply_text("❌ ACCESS DENIED\n\nContact: @itsmeaab")
+        if message:
+            message.reply_text("❌ ACCESS DENIED\n\nContact: @itsmeaab")
+        else:
+            context.bot.send_message(chat_id=uid, text="❌ ACCESS DENIED\n\nContact: @itsmeaab")
         return ConversationHandler.END
-    keyboard = [[InlineKeyboardButton("👨‍🏫 Teachers", callback_data='teacher')],[InlineKeyboardButton("🎓 Students", callback_data='student')],[InlineKeyboardButton("ℹ️ Info", callback_data='info')]]
-    role = "🔴 SUPER ADMIN" if is_super_admin(uid) else "🟢 User"
-    update.message.reply_text(f"✅ Welcome {name}\nRole: {role}\n\n🤖 100 COUNTRIES BOT\n📸 Real Photos + QR Codes\n🧠 Smart Memory\n📋 Tap-to-Copy Names\n\n📅 {now().strftime('%Y-%m-%d %H:%M:%S')}\n👤 Adeebaabkhan", reply_markup=InlineKeyboardMarkup(keyboard))
-    return MAIN_MENU
+
+    return send_main_menu(context, message, uid, name)
+
+def add_user_command(update: Update, context: CallbackContext):
+    uid = update.effective_user.id
+    if not is_super_admin(uid):
+        update.message.reply_text("❌ Only the super admin can add users")
+        return
+
+    if not context.args:
+        update.message.reply_text("Usage: /adduser <user_id> [username] [first name]")
+        return
+
+    try:
+        target_id = int(context.args[0])
+    except ValueError:
+        update.message.reply_text("❌ user_id must be a number")
+        return
+
+    username = context.args[1].lstrip('@') if len(context.args) > 1 else None
+    first_name = ' '.join(context.args[2:]) if len(context.args) > 2 else None
+
+    existing = get_authorized_user(target_id)
+    label = username or first_name or str(target_id)
+
+    if add_authorized_user(target_id, username=username, first_name=first_name, added_by=uid):
+        if existing:
+            status = "reactivated" if existing.get('is_active') == 0 else "updated"
+            update.message.reply_text(f"✅ {label} {status} and authorized")
+        else:
+            update.message.reply_text(f"✅ Added {label} to authorized users")
+    else:
+        update.message.reply_text("❌ Could not save user. Check logs for details.")
 
 def add_user_command(update: Update, context: CallbackContext):
     uid = update.effective_user.id
