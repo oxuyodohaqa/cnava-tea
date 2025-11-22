@@ -246,31 +246,6 @@ def is_authorized(uid):
     except:
         return False
 
-def get_authorized_user(uid):
-    """Return authorized user record as a dict or None."""
-    try:
-        conn = sqlite3.connect('bot.db')
-        c = conn.cursor()
-        c.execute(
-            'SELECT user_id, username, first_name, added_by, added_at, is_active FROM authorized_users WHERE user_id = ?',
-            (uid,),
-        )
-        row = c.fetchone()
-        conn.close()
-        if not row:
-            return None
-        return {
-            'user_id': row[0],
-            'username': row[1],
-            'first_name': row[2],
-            'added_by': row[3],
-            'added_at': row[4],
-            'is_active': row[5],
-        }
-    except Exception as e:
-        logger.error(f"❌ Failed to fetch authorized user {uid}: {e}")
-        return None
-
 def add_authorized_user(user_id, username=None, first_name=None, added_by=None):
     try:
         conn = sqlite3.connect('bot.db')
@@ -684,15 +659,9 @@ def add_user_command(update: Update, context: CallbackContext):
     username = context.args[1].lstrip('@') if len(context.args) > 1 else None
     first_name = ' '.join(context.args[2:]) if len(context.args) > 2 else None
 
-    existing = get_authorized_user(target_id)
-    label = username or first_name or str(target_id)
-
     if add_authorized_user(target_id, username=username, first_name=first_name, added_by=uid):
-        if existing:
-            status = "reactivated" if existing.get('is_active') == 0 else "updated"
-            update.message.reply_text(f"✅ {label} {status} and authorized")
-        else:
-            update.message.reply_text(f"✅ Added {label} to authorized users")
+        label = username or first_name or target_id
+        update.message.reply_text(f"✅ Added {label} to authorized users")
     else:
         update.message.reply_text("❌ Could not save user. Check logs for details.")
 
