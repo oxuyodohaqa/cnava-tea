@@ -1385,15 +1385,21 @@ async function processStudent(student, sessionId, collegeMatcher, deleteManager,
             return null;
         }
         
-        // STEP 4: Wait for step progression
-        const stepResult = await session.waitForCorrectStep(6, collegeMatcher);
-        
-        // ✅ MODIFIED: Don't return early on SSO success - continue to force upload
+        // STEP 4: Wait for step progression (skip wait when SSO already succeeded)
+        let stepResult = 'docUpload';
         let ssoAlreadySuccess = false;
-        if (stepResult === 'success') {
-            console.log(`[${sessionId}] ⚡ [${countryConfig.flag}] SSO Already success detected - will force upload files`);
-            ssoAlreadySuccess = true;
-            // Don't return - continue to upload step
+
+        if (ssoInstantSuccess) {
+            console.log(`[${sessionId}] ⏭️ [${countryConfig.flag}] SSO instant success - skipping wait and forcing upload`);
+        } else {
+            stepResult = await session.waitForCorrectStep(6, collegeMatcher);
+
+            // ✅ MODIFIED: Don't return early on SSO success - continue to force upload
+            if (stepResult === 'success') {
+                console.log(`[${sessionId}] ⚡ [${countryConfig.flag}] SSO Already success detected - will force upload files`);
+                ssoAlreadySuccess = true;
+                // Don't return - continue to upload step
+            }
         }
         
         if (stepResult === 'invalid_college' || stepResult === 'error') {
