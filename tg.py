@@ -338,8 +338,15 @@ EXTRA_COUNTRIES = {
     'ZW2': {'name': 'Zimbabwe Midlands', 'flag': '🇿🇼', 'locale': 'en_US', 'symbol': '$', 'salary': (400, 1700), 'json': 'sheerid_zw2.json'},
 }
 
-COUNTRIES.update({k: v for k, v in EXTRA_COUNTRIES.items() if k not in COUNTRIES})
+EXPECTED_COUNTRY_COUNT = 223
+COUNTRIES = {**COUNTRIES, **{k: v for k, v in EXTRA_COUNTRIES.items() if k not in COUNTRIES}}
 COUNTRY_COUNT = len(COUNTRIES)
+
+if COUNTRY_COUNT != EXPECTED_COUNTRY_COUNT:
+    logger.warning(
+        f"🌍 Country catalog has {COUNTRY_COUNT} entries (expected {EXPECTED_COUNTRY_COUNT}); "
+        "verify EXTRA_COUNTRIES for missing or duplicate codes."
+    )
 
 def init_db():
     conn = sqlite3.connect('bot.db')
