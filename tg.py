@@ -18,18 +18,19 @@ import qrcode
 from faker import Faker
 import sqlite3
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, MessageHandler, Filters, ConversationHandler, CallbackContext
+from telegram.ext import (
+    Updater,
+    CommandHandler,
+    CallbackQueryHandler,
+    MessageHandler,
+    Filters,
+    ConversationHandler,
+    CallbackContext,
+)
 
-BOT_TOKEN = os.getenv("BOT_TOKEN", "8233094350:AAEiVBsJ2RtLjlDfQ45ef1wCmRTwWtyNwMk")
-SUPER_ADMIN_ID = 7680006005
-ADMIN_IDS = {SUPER_ADMIN_ID}
-extra_admins = os.getenv("ADMIN_IDS", "").split(",") if os.getenv("ADMIN_IDS") else []
-for admin_id in extra_admins:
-    try:
-        ADMIN_IDS.add(int(admin_id.strip()))
-    except ValueError:
-        logger.warning(f"Skipping invalid admin id in ADMIN_IDS env: {admin_id}")
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO
+)
 logger = logging.getLogger(__name__)
 
 BOT_TOKEN = os.getenv("BOT_TOKEN", "8233094350:AAEiVBsJ2RtLjlDfQ45ef1wCmRTwWtyNwMk")
@@ -52,6 +53,8 @@ RED = (220, 52, 69)
 BORDER_GRAY = (200, 200, 200)
 BLUE = (25, 118, 210)
 LIGHT_GRAY = (240, 240, 240)
+
+LOGO_PATH = os.getenv("LOGO_PATH", "assets/logo.png")
 
 # PROFESSIONS - 47 OPTIONS
 TEACHER_PROFESSIONS = [
@@ -542,6 +545,29 @@ def get_font(size=14, bold=False):
         pass
     return ImageFont.load_default()
 
+
+def load_logo_image(size=100, fallback_text="TG"):
+    """Load a custom logo from LOGO_PATH or draw a branded fallback."""
+    if LOGO_PATH and os.path.isfile(LOGO_PATH):
+        try:
+            logo = Image.open(LOGO_PATH).convert("RGBA")
+            logo.thumbnail((size, size), Image.Resampling.LANCZOS)
+            return logo
+        except Exception as exc:
+            logger.warning(f"⚠️ Failed to load logo {LOGO_PATH}: {exc}")
+
+    logo = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(logo)
+    draw.ellipse([(0, 0), (size, size)], fill=BLUE)
+    draw.text(
+        (size // 2, size // 2),
+        fallback_text[:3].upper(),
+        fill=WHITE,
+        font=get_font(size // 2, True),
+        anchor="mm",
+    )
+    return logo
+
 def download_real_photo(student_id):
     max_attempts = 3
     for attempt in range(max_attempts):
@@ -636,9 +662,9 @@ def gen_salary_receipt_auto(school_name, teacher_name, teacher_id, profession, c
     d.rectangle([(0, 0), (width, 140)], fill=DARK_GRAY)
     logo_x, logo_y = 30, 20
     logo_size = 80
-    d.rectangle([(logo_x, logo_y), (logo_x + logo_size, logo_y + logo_size)], fill=WHITE, outline=DARK_GRAY, width=2)
     abbr = ''.join([w[0] for w in school_name.split()[:3]]).upper()[:3]
-    d.text((logo_x + logo_size // 2, logo_y + logo_size // 2), abbr, fill=DARK_GRAY, font=get_font(28, True), anchor='mm')
+    logo_img = load_logo_image(logo_size, fallback_text=abbr or "TG")
+    img.paste(logo_img, (logo_x, logo_y), logo_img)
     d.text((logo_x + logo_size + 25, 30), school_name.upper(), fill=WHITE, font=get_font(20, True))
     d.text((logo_x + logo_size + 25, 65), f"{cfg['flag']} {cfg['name']}", fill=GOLD, font=get_font(13))
     d.text((width - 30, 45), "MONTHLY PAYSLIP", fill=GOLD, font=get_font(17, True), anchor='rt')
@@ -737,9 +763,9 @@ def gen_teacher_id_auto(school_name, teacher_name, teacher_id, profession, count
     d.rectangle([(0, 0), (width, 140)], fill=BLUE)
     logo_x, logo_y = 30, 20
     logo_size = 100
-    d.rectangle([(logo_x, logo_y), (logo_x + logo_size, logo_y + logo_size)], fill=WHITE, outline=BLUE, width=2)
     abbr = ''.join([w[0] for w in school_name.split()[:3]]).upper()[:3]
-    d.text((logo_x + logo_size // 2, logo_y + logo_size // 2), abbr, fill=BLUE, font=get_font(36, True), anchor='mm')
+    logo_img = load_logo_image(logo_size, fallback_text=abbr or "TG")
+    img.paste(logo_img, (logo_x, logo_y), logo_img)
     d.text((160, 35), school_name.upper(), fill=WHITE, font=get_font(21, True))
     d.text((160, 75), f"{cfg['flag']} {cfg['name']}", fill=WHITE, font=get_font(13))
     d.text((width - 40, 35), "TEACHER", fill=WHITE, font=get_font(19, True), anchor='rt')
@@ -806,9 +832,9 @@ def gen_student_id_auto(school_name, student_name, student_id, program, country_
     d.rectangle([(0, 110), (width, 140)], fill=(14, 71, 161))
     logo_x, logo_y = 30, 20
     logo_size = 100
-    d.rectangle([(logo_x, logo_y), (logo_x + logo_size, logo_y + logo_size)], fill=WHITE, outline=BLUE, width=2)
     abbr = ''.join([w[0] for w in school_name.split()[:3]]).upper()[:3]
-    d.text((logo_x + logo_size // 2, logo_y + logo_size // 2), abbr, fill=BLUE, font=get_font(36, True), anchor='mm')
+    logo_img = load_logo_image(logo_size, fallback_text=abbr or "TG")
+    img.paste(logo_img, (logo_x, logo_y), logo_img)
     d.text((160, 35), school_name.upper(), fill=WHITE, font=get_font(21, True))
     d.text((160, 75), f"{cfg['flag']} {cfg['name']}", fill=WHITE, font=get_font(13))
     d.text((width - 40, 35), "STUDENT", fill=WHITE, font=get_font(19, True), anchor='rt')
@@ -894,7 +920,7 @@ def send_main_menu(context: CallbackContext, chat, uid: int, name: str):
     role = "🔴 SUPER ADMIN" if is_super_admin(uid) else "🟢 User"
     text = (
         f"✅ Welcome {name}\nRole: {role}\n\n"
-        f"🤖 100 COUNTRIES BOT\n📸 Real Photos + QR Codes\n🧠 Smart Memory\n📋 Tap-to-Copy Names\n\n"
+        f"🤖 {COUNTRY_COUNT} COUNTRIES BOT\n📸 Real Photos + QR Codes\n🧠 Smart Memory\n📋 Tap-to-Copy Names\n\n"
         f"📅 {now().strftime('%Y-%m-%d %H:%M:%S')}\n👤 Adeebaabkhan"
     )
 
@@ -983,6 +1009,30 @@ def add_super_admin_command(update: Update, context: CallbackContext):
             update.message.reply_text(f"✅ Added {label} as a super admin")
     else:
         update.message.reply_text("❌ Could not promote user. Check logs for details.")
+
+
+def list_countries_command(update: Update, context: CallbackContext):
+    uid = update.effective_user.id
+    if not is_authorized(uid):
+        update.message.reply_text("❌ ACCESS DENIED\n\nContact: @itsmeaab")
+        return
+
+    lines = [f"{code}: {cfg['flag']} {cfg['name']}" for code, cfg in sorted(COUNTRIES.items())]
+    header = f"🌍 {COUNTRY_COUNT} countries available:\n"
+    chunks = []
+    current = header
+    for line in lines:
+        if len(current) + len(line) + 1 > 3800:
+            chunks.append(current.rstrip())
+            current = line
+        else:
+            current += ("" if current.endswith("\n") else "\n") + line
+    if current:
+        chunks.append(current.rstrip())
+
+    for chunk in chunks:
+        update.message.reply_text(chunk)
+
 
 def add_user_inline_input(update: Update, context: CallbackContext):
     uid = update.effective_user.id
@@ -1503,6 +1553,7 @@ def main():
     dp.add_handler(conv)
     dp.add_handler(CommandHandler('adduser', add_user_command))
     dp.add_handler(CommandHandler('addsuper', add_super_admin_command))
+    dp.add_handler(CommandHandler('countries', list_countries_command))
     dp.add_error_handler(error_handler)
     
     logger.info("✅ BOT STARTED!")
