@@ -3,9 +3,10 @@
 SHEERID ID CARD GENERATOR - ULTRA MEGA FAST - 2000+ IDs/MIN ⚡⚡⚡⚡⚡
 ✅ EXACT NAMES: Zero modifications to college names from JSON
 ✅ CURRENT DATES: Within 90 days for SheerID verification
-✅ LARGE LOGO: Prominent 300x300 institution logo
+✅ SIMPLE FORMAT: Clean layout like STU36259874.png
 ✅ SAME FORMAT: STUDENTID_COLLEGEID.png + students.txt
 ✅ 24 COUNTRIES: US, CA, GB, IN, ID, AU, DE, FR, ES, IT, BR, MX, NL, SE, NO, DK, JP, KR, SG, NZ, ZA, CN, AE, PH
+✅ ENGLISH NAMES ONLY: Always generates English student names
 ✅ ULTRA MEGA FAST: 5000 workers, 250 sessions, 1000 batch, photo cache, aggressive optimization
 Updated: 2025-11-11 19:29:07 UTC
 User: Adeebaabkhan
@@ -14,6 +15,8 @@ Target: 2000+ IDs per minute (10K in 5 minutes)
 
 import sys
 import os
+import re
+import logging
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 import requests
@@ -28,6 +31,20 @@ import concurrent.futures
 import threading
 from functools import lru_cache
 import gc
+
+
+# --- Logging & Helpers (match b.py style) ---
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logger = logging.getLogger(__name__)
+
+
+def clean_name(name: str) -> str:
+    """Membersihkan nama dari gelar dan karakter yang tidak diinginkan (konsisten dengan b.py)."""
+
+    name = re.sub(r"[.,]", "", name)
+    name = re.sub(r"\b(Drs?|Ir|H|Prof|S|M|Bapak|Ibu)\b", "", name, flags=re.IGNORECASE)
+    name = re.sub(r"\s+", " ", name).strip()
+    return name
 
 # ==================== CONFIGURATION ====================
 COUNTRY_CONFIG = {
@@ -294,31 +311,13 @@ class UnlimitedIDCardGenerator:
         self.student_buffer = []
         self.buffer_size = 1000  # Increased from 500
         
-        # ⚡⚡⚡ PHOTO CACHE for instant access
+        # Remove photo cache and related functionality
         self.photo_cache = []
         self.photo_cache_lock = threading.Lock()
-        self.photo_cache_size = 100
+        self.photo_cache_size = 0
         
-        # ⚡ 250 PHOTO SESSIONS (increased from 150)
+        # Remove sessions as they're no longer needed for photo downloads
         self.sessions = []
-        for i in range(250):
-            session = requests.Session()
-            session.headers.update({
-                'User-Agent': f'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
-                'Accept-Encoding': 'gzip, deflate, br',
-                'Accept-Language': 'en-US,en;q=0.9',
-                'Cache-Control': 'no-cache',
-                'Connection': 'keep-alive',
-            })
-            adapter = requests.adapters.HTTPAdapter(
-                pool_connections=500,  # Increased
-                pool_maxsize=500,      # Increased
-                max_retries=1          # Reduced retries
-            )
-            session.mount('http://', adapter)
-            session.mount('https://', adapter)
-            self.sessions.append(session)
         
         self.stats = {
             "ids_generated": 0,
@@ -329,29 +328,38 @@ class UnlimitedIDCardGenerator:
         }
         
         self.colors = {
-            "navy": (0, 33, 71),
-            "gold": (255, 184, 28),
-            "blue": (20, 60, 110),
-            "dark_blue": (15, 40, 70),
-            "white": (255, 255, 255),
-            "black": (0, 0, 0),
-            "gray": (50, 50, 50),
-            "light_gray": (160, 160, 160),
-            "bg_cream": (245, 245, 240),
-            "label_dark": (40, 40, 40),
-            "light_blue": (173, 216, 230),
+            "blue": "#1e3a8a",
+            "light_blue": "#dbeafe",
+            "dark_blue": "#1e40af",
+            "white": "#ffffff",
+            "black": "#000000",
+            "gray": "#6b7280",
         }
+
+        # Reuse the same background image that b.py relies on
+        self.template_path = Path(__file__).parent / "mentahan.jpg"
         
         # ⚡ CACHE CURRENT YEAR
         self.current_year = datetime.now(timezone.utc).year
         
+        # Font configuration to match b.py exactly
+        self.font_path = Path(__file__).parent / "PlayfairDisplay-VariableFont_wght.ttf"
+        self.font_size = 50
+        self.text_color = "#051d40"
+        self.center_x = 675  # Same as b.py
+        self.pos_y = 200    # Same as b.py
+        self.bg_padding_x = 50  # Same as b.py
+        self.bg_padding_y = 35  # Same as b.py
+        
+        # College name position (similar to b.py but for university name)
+        self.college_font_size = 40
+        self.college_pos_y = 100
+        self.college_bg_padding_x = 40
+        self.college_bg_padding_y = 25
+        
         self.create_directories()
         self.clear_all_data()
         self.fonts = self.load_fonts()
-        
-        # ⚡ LOGO CACHE
-        self.logo_cache = {}
-        self.logo_cache_lock = threading.Lock()
 
     def create_directories(self):
         os.makedirs(self.receipts_dir, exist_ok=True)
@@ -372,16 +380,15 @@ class UnlimitedIDCardGenerator:
                     pass
             
             print("🗑️  All data cleared!")
-            print(f"✅ EXACT NAMES: Uses JSON names as-is (NO changes)")
+            print(f"✅ EXACT NAMES: Uses JSON college names as-is")
+            print(f"✅ ENGLISH NAMES: Only English student names")
             print(f"✅ SHEERID READY: Dates within 90 days")
-            print(f"✅ LARGE LOGO: 300x300 prominent display")
+            print(f"✅ SIMPLE FORMAT: Clean layout like STU36259874.png")
             print(f"✅ FORMAT: STUDENTID_COLLEGEID.png")
             print(f"✅ SAVE: students.txt + receipts/")
             print(f"✅ 24 COUNTRIES: Full global support")
-            print(f"⚡⚡⚡⚡⚡ ULTRA MEGA FAST: 5000 workers, 250 sessions")
+            print(f"⚡⚡⚡⚡⚡ ULTRA MEGA FAST: 5000 workers")
             print(f"⚡⚡⚡⚡⚡ TARGET: 2000+ IDs per minute (10K in 5 min)")
-            print(f"⚡⚡⚡⚡⚡ BATCH: 1000 writes at once")
-            print(f"⚡⚡⚡⚡⚡ PHOTO CACHE: 100 pre-loaded photos")
             print("="*70)
         except Exception as e:
             print(f"⚠️  Warning: {e}")
@@ -419,6 +426,7 @@ class UnlimitedIDCardGenerator:
             
             print(f"✅ Loaded {len(colleges)} colleges")
             print(f"✅ Names stored EXACTLY as in JSON (no modifications)")
+            print(f"✅ ENGLISH NAMES: Only English student names")
             print(f"✅ UNLIMITED mode: Colleges can be reused")
             
             return colleges
@@ -470,49 +478,44 @@ class UnlimitedIDCardGenerator:
             print("❌ No colleges!")
             return False
         
-        locale_map = {
-            'US': 'en_US', 'CA': 'en_CA', 'GB': 'en_GB', 'IN': 'en_IN',
-            'ID': 'id_ID', 'AU': 'en_AU', 'DE': 'de_DE', 'FR': 'fr_FR',
-            'ES': 'es_ES', 'IT': 'it_IT', 'BR': 'pt_BR', 'MX': 'es_MX',
-            'NL': 'nl_NL', 'SE': 'sv_SE', 'NO': 'no_NO', 'DK': 'da_DK',
-            'JP': 'ja_JP', 'KR': 'ko_KR', 'SG': 'en_SG', 'NZ': 'en_NZ',
-            'ZA': 'en_ZA', 'CN': 'zh_CN', 'AE': 'en_US', 'PH': 'fil_PH'
-        }
-        
-        locale = locale_map.get(self.selected_country, 'en_US')
-        
+        # ALWAYS USE ENGLISH FAKER REGARDLESS OF COUNTRY
+        print("✅ Using English names only for all students")
         try:
-            self.faker_instances = [Faker(locale) for _ in range(200)]  # Increased from 100
+            self.faker_instances = [Faker('en_US') for _ in range(200)]  # Always English
         except:
-            print(f"⚠️  Locale {locale} not available, using en_US")
-            self.faker_instances = [Faker('en_US') for _ in range(200)]
+            self.faker_instances = [Faker('en_US') for _ in range(200)]  # Fallback
         
-        # ⚡⚡⚡ Pre-fill photo cache
-        print(f"\n⚡⚡⚡ Pre-loading {self.photo_cache_size} photos...")
-        self.refill_photo_cache_sync(self.photo_cache_size)
-        print(f"✅ Photo cache ready!")
+        print(f"✅ Generator ready!")
         
         return True
 
     @lru_cache(maxsize=1)
     def load_fonts(self):
         try:
+            if self.font_path.exists():
+                return {
+                    'title': ImageFont.truetype(str(self.font_path), 64),
+                    'header': ImageFont.truetype(str(self.font_path), 50),
+                    'name': ImageFont.truetype(str(self.font_path), 54),
+                    'normal': ImageFont.truetype(str(self.font_path), 28),
+                    'small': ImageFont.truetype(str(self.font_path), 20),
+                    'bold': ImageFont.truetype(str(self.font_path), 32),
+                }
+
             if os.name == 'nt':
                 return {
-                    'huge': ImageFont.truetype("arialbd.ttf", 72),
-                    'college': ImageFont.truetype("arialbd.ttf", 48),
-                    'subtitle': ImageFont.truetype("arial.ttf", 22),
-                    'name': ImageFont.truetype("arialbd.ttf", 36),
-                    'value': ImageFont.truetype("arialbd.ttf", 28),
-                    'label': ImageFont.truetype("arialbd.ttf", 22),
-                    'small': ImageFont.truetype("arial.ttf", 16),
-                    'watermark': ImageFont.truetype("arialbd.ttf", 70),
-                    'logo_text': ImageFont.truetype("arialbd.ttf", 42),
+                    'title': ImageFont.truetype("arialbd.ttf", 24),
+                    'header': ImageFont.truetype("arialbd.ttf", 18),
+                    'name': ImageFont.truetype("arialbd.ttf", 20),
+                    'normal': ImageFont.truetype("arial.ttf", 14),
+                    'small': ImageFont.truetype("arial.ttf", 12),
+                    'bold': ImageFont.truetype("arialbd.ttf", 14),
                 }
-            else:
-                return {k: ImageFont.load_default() for k in ['huge', 'college', 'subtitle', 'name', 'value', 'label', 'small', 'watermark', 'logo_text']}
-        except:
-            return {k: ImageFont.load_default() for k in ['huge', 'college', 'subtitle', 'name', 'value', 'label', 'small', 'watermark', 'logo_text']}
+
+            return {k: ImageFont.load_default() for k in ['title', 'header', 'name', 'normal', 'small', 'bold']}
+        except Exception as exc:
+            logger.warning("Falling back to default fonts due to: %s", exc)
+            return {k: ImageFont.load_default() for k in ['title', 'header', 'name', 'normal', 'small', 'bold']}
 
     def get_faker(self):
         with self.faker_lock:
@@ -520,168 +523,21 @@ class UnlimitedIDCardGenerator:
             self.faker_index = (self.faker_index + 1) % len(self.faker_instances)
             return faker
 
-    def create_large_logo(self, college_name):
-        """⚡ CACHED LOGO GENERATION"""
-        with self.logo_cache_lock:
-            if college_name in self.logo_cache:
-                return self.logo_cache[college_name].copy()
+    def create_simple_photo(self):
+        """Create a simple placeholder photo"""
+        photo = Image.new("RGB", (120, 150), self.colors["light_blue"])
+        draw = ImageDraw.Draw(photo)
         
-        size = (300, 300)
-        logo = Image.new('RGBA', size, (255, 255, 255, 0))
-        draw = ImageDraw.Draw(logo)
+        # Simple face placeholder
+        draw.ellipse([30, 20, 90, 80], outline=self.colors["blue"], width=2)
+        draw.ellipse([45, 40, 55, 50], fill=self.colors["blue"])  # Left eye
+        draw.ellipse([65, 40, 75, 50], fill=self.colors["blue"])  # Right eye
+        draw.arc([45, 55, 75, 70], 0, 180, fill=self.colors["blue"], width=2)
         
-        center = 150
+        draw.text((60, 110), "STUDENT\nPHOTO", 
+                 fill=self.colors["blue"], font=self.fonts['small'], anchor="mm")
         
-        draw.ellipse([20, 20, 280, 280], fill=self.colors["navy"], outline=self.colors["gold"], width=8)
-        draw.ellipse([40, 40, 260, 260], fill=self.colors["white"], outline=self.colors["gold"], width=6)
-        draw.ellipse([60, 60, 240, 240], fill=self.colors["navy"])
-        
-        book_width = 80
-        book_height = 60
-        book_x = center - book_width // 2
-        book_y = center - book_height // 2 - 20
-        
-        draw.rectangle([book_x, book_y, book_x + book_width, book_y + book_height], 
-                      fill=self.colors["white"], outline=self.colors["gold"], width=3)
-        draw.line([book_x + book_width//2, book_y, book_x + book_width//2, book_y + book_height], 
-                 fill=self.colors["gold"], width=4)
-        
-        torch_x = center
-        torch_y = center + 50
-        
-        flame_points = [
-            (torch_x, torch_y - 25),
-            (torch_x - 15, torch_y - 10),
-            (torch_x - 10, torch_y),
-            (torch_x + 10, torch_y),
-            (torch_x + 15, torch_y - 10)
-        ]
-        draw.polygon(flame_points, fill=self.colors["gold"])
-        draw.rectangle([torch_x - 8, torch_y, torch_x + 8, torch_y + 35], fill=self.colors["gold"])
-        
-        star_positions = [
-            (center - 70, center - 70),
-            (center + 70, center - 70),
-            (center - 70, center + 70),
-            (center + 70, center + 70)
-        ]
-        
-        for sx, sy in star_positions:
-            draw.polygon([
-                (sx, sy - 8), (sx - 3, sy - 3), (sx - 8, sy),
-                (sx - 3, sy + 3), (sx, sy + 8), (sx + 3, sy + 3),
-                (sx + 8, sy), (sx + 3, sy - 3)
-            ], fill=self.colors["gold"])
-        
-        try:
-            words = college_name.split()[:3]
-            initials = ''.join([w[0] for w in words if w])[:3].upper()
-            
-            bbox = draw.textbbox((0, 0), initials, font=self.fonts['logo_text'])
-            text_w = bbox[2] - bbox[0]
-            
-            draw.text((center - text_w//2, center + 80), initials, 
-                     fill=self.colors["gold"], font=self.fonts['logo_text'])
-        except:
-            pass
-        
-        with self.logo_cache_lock:
-            if len(self.logo_cache) < 2000:  # Increased cache limit
-                self.logo_cache[college_name] = logo.copy()
-        
-        return logo
-
-    def get_real_photo_guaranteed(self):
-        """⚡⚡⚡⚡⚡ ULTRA FAST PHOTO DOWNLOADS - MINIMAL DELAYS"""
-        attempt = 0
-        session_index = random.randint(0, len(self.sessions) - 1)
-        
-        while True:
-            attempt += 1
-            
-            try:
-                session = self.sessions[session_index % len(self.sessions)]
-                
-                timestamp = int(time.time() * 1000)
-                random_param = random.randint(100000, 999999)
-                
-                urls_to_try = [
-                    f"https://thispersondoesnotexist.com/?{timestamp}",
-                    f"https://thispersondoesnotexist.com/image?{random_param}",
-                ]
-                
-                for url in urls_to_try:
-                    try:
-                        response = session.get(url, timeout=2, stream=True)  # Reduced to 2s
-                        
-                        if response.status_code == 200:
-                            content = response.content
-                            
-                            if len(content) > 5000:
-                                photo = Image.open(BytesIO(content)).convert("RGB")
-                                
-                                if photo.size[0] >= 100 and photo.size[1] >= 100:
-                                    photo = photo.resize((350, 450), Image.Resampling.LANCZOS)
-                                    self.stats["photos_downloaded"] += 1
-                                    
-                                    if attempt > 1:
-                                        self.stats["photo_retries"] += (attempt - 1)
-                                    
-                                    return photo
-                    except:
-                        continue
-                
-                # ⚡⚡⚡⚡⚡ ULTRA MINIMAL DELAYS
-                if attempt < 3:
-                    time.sleep(0.001)  # 1ms
-                elif attempt < 10:
-                    time.sleep(0.005)  # 5ms
-                else:
-                    time.sleep(0.01)   # 10ms max
-                
-                session_index += 1
-                
-            except:
-                time.sleep(0.001)
-                continue
-
-    def refill_photo_cache_sync(self, count):
-        """⚡⚡⚡ Pre-fill photo cache synchronously"""
-        with concurrent.futures.ThreadPoolExecutor(max_workers=100) as executor:
-            futures = [executor.submit(self.get_real_photo_guaranteed) for _ in range(count)]
-            for future in concurrent.futures.as_completed(futures):
-                try:
-                    photo = future.result()
-                    with self.photo_cache_lock:
-                        self.photo_cache.append(photo)
-                except:
-                    pass
-
-    def refill_photo_cache_background(self):
-        """⚡⚡⚡ Background thread to keep photo cache full"""
-        while len(self.photo_cache) < self.photo_cache_size:
-            try:
-                photo = self.get_real_photo_guaranteed()
-                with self.photo_cache_lock:
-                    if len(self.photo_cache) < self.photo_cache_size:
-                        self.photo_cache.append(photo)
-            except:
-                break
-
-    def get_photo_from_cache(self):
-        """⚡⚡⚡ Get photo from cache or download if needed"""
-        with self.photo_cache_lock:
-            if len(self.photo_cache) > 0:
-                photo = self.photo_cache.pop(0)
-                
-                # Start background refill if cache is low
-                if len(self.photo_cache) < 20:
-                    threading.Thread(target=self.refill_photo_cache_background, daemon=True).start()
-                
-                return photo
-        
-        # Cache empty, download directly
-        return self.get_real_photo_guaranteed()
+        return photo
 
     def select_random_college(self):
         with self.colleges_lock:
@@ -689,94 +545,21 @@ class UnlimitedIDCardGenerator:
                 return None
             return random.choice(self.all_colleges)
 
-    def _text_width(self, draw, text, font):
-        """Return the rendered width for a given text and font."""
-        try:
-            return draw.textlength(text, font=font)
-        except AttributeError:
-            bbox = draw.textbbox((0, 0), text, font=font)
-            return bbox[2] - bbox[0]
-
-    def _split_long_word(self, word, draw, font, max_width):
-        """Split an overlong word into chunks that each fit within max_width."""
-        chunks = []
-        start = 0
-        while start < len(word):
-            end = len(word)
-            # Binary search for the longest prefix that fits
-            low, high = start + 1, len(word)
-            best = start + 1
-            while low <= high:
-                mid = (low + high) // 2
-                if self._text_width(draw, word[start:mid], font) <= max_width:
-                    best = mid
-                    low = mid + 1
-                else:
-                    high = mid - 1
-            if best == start:
-                # Ensure progress even if a single character exceeds max_width
-                best = start + 1
-            chunks.append(word[start:best])
-            start = best
-        return chunks
-
-    def wrap_text_smart(self, text, font, max_width, draw):
-        """Wrap text into lines that fit max_width, even for very long inputs."""
-        if not text:
-            return []
-
-        words = text.split()
-        lines = []
-        current_line = []
-        current_width = 0
-        space_width = self._text_width(draw, " ", font)
-        width_cache = {}
-
-        for word in words:
-            if word not in width_cache:
-                width_cache[word] = self._text_width(draw, word, font)
-            word_width = width_cache[word]
-
-            if not current_line:
-                if word_width <= max_width:
-                    current_line.append(word)
-                    current_width = word_width
-                else:
-                    lines.extend(self._split_long_word(word, draw, font, max_width))
-            else:
-                projected_width = current_width + space_width + word_width
-                if projected_width <= max_width:
-                    current_line.append(word)
-                    current_width = projected_width
-                else:
-                    lines.append(' '.join(current_line))
-                    if word_width <= max_width:
-                        current_line = [word]
-                        current_width = word_width
-                    else:
-                        lines.extend(self._split_long_word(word, draw, font, max_width))
-                        current_line = []
-                        current_width = 0
-
-        if current_line:
-            lines.append(' '.join(current_line))
-
-        return lines
-
     def generate_student_data(self, college):
         fake = self.get_faker()
         config = COUNTRY_CONFIG[self.selected_country]
-        
+
+        # ALWAYS GENERATE ENGLISH NAMES REGARDLESS OF COUNTRY
         first_name = fake.first_name()
         last_name = fake.last_name()
-        full_name = f"{first_name} {last_name}".upper()
+        full_name = clean_name(f"{first_name} {last_name}")
         student_id = f"{fake.random_number(digits=8, fix_len=True)}"
         
         programs_by_country = {
-            'US': ["Computer Science", "Business Administration", "Engineering", "Nursing", "Psychology", "Biology", "Mathematics"],
-            'CA': ["Computer Science", "Business", "Engineering", "Medicine", "Arts", "Law"],
-            'GB': ["Computer Science", "Business Studies", "Engineering", "Medicine", "Law", "Economics"],
-            'IN': ["B.Tech", "B.E.", "MBBS", "B.Com", "BBA", "B.Sc", "BCA"],
+            'US': ["Computer Science", "Business Administration", "Engineering", "Nursing", "Psychology"],
+            'CA': ["Computer Science", "Business", "Engineering", "Medicine", "Arts"],
+            'GB': ["Computer Science", "Business Studies", "Engineering", "Medicine", "Law"],
+            'IN': ["B.Tech", "B.E.", "MBBS", "B.Com", "BBA"],
             'ID': ["Teknik Informatika", "Ekonomi", "Kedokteran", "Hukum", "Teknik"],
             'AU': ["Computer Science", "Business", "Engineering", "Medicine", "Law"],
             'DE': ["Informatik", "BWL", "Ingenieurwesen", "Medizin", "Jura"],
@@ -796,7 +579,7 @@ class UnlimitedIDCardGenerator:
             'ZA': ["Computer Science", "Business", "Engineering", "Medicine", "Law"],
             'CN': ["Computer Science", "Business", "Engineering", "Medicine", "Law"],
             'AE': ["Computer Science", "Business", "Engineering", "Medicine", "Law"],
-            'PH': ["BS Computer Science", "BS Business Administration", "BS Engineering", "BS Nursing", "BS Psychology"]
+            'PH': ["BS Computer Science", "BS Business Administration", "BS Engineering", "BS Nursing"]
         }
         
         programs = programs_by_country.get(self.selected_country, ["Computer Science", "Business", "Engineering"])
@@ -804,7 +587,13 @@ class UnlimitedIDCardGenerator:
         today = datetime.now(timezone.utc)
         days_ago = random.randint(0, 90)
         doc_date = today - timedelta(days=days_ago)
-        exp_date = doc_date + timedelta(days=random.choice([365, 730, 1095]))
+        exp_date = doc_date + timedelta(days=365*4)  # 4 years validity
+        
+        # Generate registration and card numbers
+        reg_number = f"REG/{self.selected_country}/{fake.random_number(digits=6, fix_len=True)}"
+        card_number = f"CARD-{fake.random_number(digits=4, fix_len=True)}-{fake.random_number(digits=4, fix_len=True)}"
+
+        country_label = f"{config['flag']} {config['name']}"
         
         return {
             "full_name": full_name,
@@ -813,174 +602,122 @@ class UnlimitedIDCardGenerator:
             "college": college,
             "doc_date": doc_date,
             "exp_date": exp_date,
-            "term": random.choice(config['academic_terms'])
+            "reg_number": reg_number,
+            "card_number": card_number,
+            "academic_year": f"{self.current_year}-{self.current_year+1}",
+            "country": country_label,
+            "country_code": self.selected_country
         }
 
-    def create_professional_id_card(self, student_data):
+    def create_simple_id_card(self, student_data):
+        """EXACTLY LIKE B.PY - College name AND Student name with white backgrounds"""
         college = student_data['college']
         college_name = college['name']
         college_id = college['id']
         student_id = student_data['student_id']
-        
+
         filename = f"{student_id}_{college_id}.png"
         filepath = os.path.join(self.receipts_dir, filename)
-        
-        width, height = 1800, 1100
 
-        card = Image.new("RGB", (width, height), self.colors["bg_cream"])
-        draw = ImageDraw.Draw(card)
-        fonts = self.load_fonts()
-        config = COUNTRY_CONFIG[self.selected_country]
-        
-        border_thickness = 15
-        for i in range(border_thickness):
-            draw.rectangle([i, i, width-i-1, height-i-1], outline=self.colors["navy"], width=1)
-        
-        header_height = 240
-        draw.rectangle([border_thickness, border_thickness,
-                       width-border_thickness, header_height],
-                      fill=self.colors["navy"])
-
-        draw.rectangle([border_thickness, header_height - 18,
-                       width-border_thickness, header_height],
-                      fill=self.colors["gold"])
-        
-        logo = self.create_large_logo(college_name)
-        logo_pos = (40, 40)
-        
-        card_rgba = card.convert('RGBA')
-        card_rgba.paste(logo, logo_pos, logo)
-        card = card_rgba.convert('RGB')
-        draw = ImageDraw.Draw(card)
-        
-        temp_img = Image.new("RGB", (1, 1))
-        temp_draw = ImageDraw.Draw(temp_img)
-        max_width = width - 450
-        
-        name_x = 380
-        name_y = 70
-
-        bbox = temp_draw.textbbox((0, 0), college_name, font=fonts['college'])
-        text_width = bbox[2] - bbox[0]
-        
-        if text_width <= max_width:
-            draw.text((name_x, name_y), college_name, fill=self.colors["white"],
-                     font=fonts['college'])
-        else:
-            lines = self.wrap_text_smart(college_name, fonts['college'], max_width, temp_draw)
-            y_start = name_y if len(lines) == 2 else name_y - 20
-            for i, line in enumerate(lines[:3]):
-                draw.text((name_x, y_start + (i * 55)), line, fill=self.colors["white"],
-                         font=fonts['college'])
-
-        draw.text((name_x, name_y + 120), "STUDENT IDENTIFICATION CARD",
-                 fill=self.colors["gold"], font=fonts['subtitle'])
-        
-        draw.text((width - 200, 60), f"{self.current_year}-{self.current_year+1}", 
-                 fill=self.colors["gold"], font=fonts['name'], anchor="mm")
-        
-        watermark_img = Image.new('RGBA', (width, height), (255, 255, 255, 0))
-        watermark_draw = ImageDraw.Draw(watermark_img)
-        watermark_draw.text((width//2, height//2), "VALID",
-                          fill=(200, 200, 200, 25), font=fonts['watermark'], anchor="mm")
-        card = Image.alpha_composite(card.convert('RGBA'), watermark_img).convert('RGB')
-        draw = ImageDraw.Draw(card)
-
-        content_y = header_height + 40
-
-        photo = self.get_photo_from_cache()
-        photo_x = 70
-
-        left_panel_width = 430
-        left_panel_height = 740
-        draw.rounded_rectangle([photo_x - 20, content_y - 10,
-                               photo_x - 20 + left_panel_width,
-                               content_y - 10 + left_panel_height],
-                              radius=28, fill=self.colors["white"], outline=self.colors["navy"], width=4)
-
-        photo_pos = (photo_x, content_y + 10)
-        draw.rectangle([photo_pos[0]-8, photo_pos[1]-8,
-                       photo_pos[0]+360, photo_pos[1]+460],
-                      fill=self.colors["navy"])
-        card.paste(photo, photo_pos)
-
-        info_block_y = photo_pos[1] + 480
-        draw.text((photo_x + 10, info_block_y), "STUDENT", fill=self.colors["gray"], font=fonts['label'])
-        draw.text((photo_x + 10, info_block_y + 32), student_data['full_name'], fill=self.colors["black"], font=fonts['name'])
-
-        draw.text((photo_x + 10, info_block_y + 78), "ID NUMBER", fill=self.colors["gray"], font=fonts['label'])
-        draw.text((photo_x + 10, info_block_y + 110), student_id, fill=self.colors["navy"], font=fonts['value'])
-
-        draw.text((photo_x + 10, info_block_y + 156), "TERM", fill=self.colors["gray"], font=fonts['label'])
-        draw.text((photo_x + 10, info_block_y + 188), student_data['term'], fill=self.colors["black"], font=fonts['value'])
-
-        right_panel_x = photo_x + left_panel_width + 40
-        right_panel_width = width - right_panel_x - 70
-
-        section_top = content_y
-        section_gap = 26
-
-        draw.rounded_rectangle([right_panel_x, section_top,
-                               right_panel_x + right_panel_width, section_top + 340],
-                              radius=24, fill=self.colors["white"], outline=self.colors["navy"], width=4)
-
-        draw.text((right_panel_x + 20, section_top + 20), "INSTITUTION", fill=self.colors["gray"], font=fonts['label'])
-        draw.text((right_panel_x + 20, section_top + 52), college_name, fill=self.colors["black"], font=fonts['name'])
-
-        draw.text((right_panel_x + 20, section_top + 52 + section_gap), "PROGRAM", fill=self.colors["gray"], font=fonts['label'])
-        draw.text((right_panel_x + 20, section_top + 52 + section_gap + 32), student_data['program'], fill=self.colors["navy"], font=fonts['value'])
-
-        draw.text((right_panel_x + 20, section_top + 52 + section_gap*2 + 10), "ACADEMIC YEAR", fill=self.colors["gray"], font=fonts['label'])
-        draw.text((right_panel_x + 20, section_top + 52 + section_gap*2 + 42), f"{self.current_year}-{self.current_year+1}", fill=self.colors["black"], font=fonts['value'])
-
-        timeline_top = section_top + 360
-        draw.rounded_rectangle([right_panel_x, timeline_top,
-                               right_panel_x + right_panel_width, timeline_top + 210],
-                              radius=24, fill=self.colors["white"], outline=self.colors["navy"], width=4)
-
-        draw.text((right_panel_x + 20, timeline_top + 20), "ISSUE DATE", fill=self.colors["gray"], font=fonts['label'])
-        draw.text((right_panel_x + 20, timeline_top + 52), student_data['doc_date'].strftime('%d %B %Y'), fill=self.colors["black"], font=fonts['value'])
-
-        draw.text((right_panel_x + 20, timeline_top + 98), "VALID UNTIL", fill=self.colors["gray"], font=fonts['label'])
-        draw.text((right_panel_x + 20, timeline_top + 130), student_data['exp_date'].strftime('%d %B %Y'), fill=self.colors["navy"], font=fonts['value'])
-
-        qr_y = timeline_top + 10
-        qr_x = right_panel_x + right_panel_width - 240
-        
-        # ⚡ QR Code (optional - can be disabled for even more speed)
         try:
-            qr = qrcode.QRCode(version=1, box_size=8, border=2)
-            qr.add_data(f"{college_name}|{student_id}|{student_data['full_name']}")
-            qr.make(fit=True)
-            qr_img = qr.make_image(fill_color="black", back_color="white").convert("RGB").resize((200, 200))
+            base = Image.open(self.template_path).convert("RGB")
+        except FileNotFoundError:
+            logger.warning("Template image %s not found, falling back to plain card", self.template_path)
+            base = Image.new("RGB", (800, 500), self.colors["white"])
+
+        width, height = base.size
+        draw = ImageDraw.Draw(base)
+
+        try:
+            if not os.path.exists(self.font_path):
+                raise FileNotFoundError(f"Font not found: {self.font_path}")
             
-            draw.rectangle([qr_x-5, qr_y-5, qr_x+205, qr_y+205],
-                          fill=self.colors["navy"])
+            # Load fonts
+            student_font = ImageFont.truetype(str(self.font_path), self.font_size)
+            college_font = ImageFont.truetype(str(self.font_path), self.college_font_size)
             
-            card.paste(qr_img, (qr_x, qr_y))
+            # ===== DRAW COLLEGE NAME (TOP) =====
+            # ===== DRAW COLLEGE NAME ON TOP BAR (WITH WHITE BACKGROUND) =====
+            college_text = college_name  # from JSON
+
+            # Measure text size
+            college_text_bbox = draw.textbbox((0, 0), college_text, font=college_font)
+            college_text_width = college_text_bbox[2] - college_text_bbox[0]
+            college_text_height = college_text_bbox[3] - college_text_bbox[1]
+
+            # Positioning on the dark blue header
+            college_x = (width - college_text_width) / 2
+            college_y = 26  # adjust if needed
+
+            # Padding for white background box
+            pad_x = 40
+            pad_y = 20
+
+            # Draw the white rectangle behind the text
+            draw.rectangle(
+                [
+                    college_x - pad_x,
+                    college_y - pad_y,
+                    college_x + college_text_width + pad_x,
+                    college_y + college_text_height + pad_y,
+                ],
+                fill="white",
+            )
+
+            # Draw the college name text (dark blue)
+            draw.text(
+                (college_x, college_y),
+                college_text,
+                font=college_font,
+                fill=self.text_color,   # dark blue text
+            )
+
+
+
+
+            # ===== DRAW STUDENT NAME (CENTER) =====
+            full_name = student_data["full_name"]
+            student_text_bbox = draw.textbbox((0, 0), full_name, font=student_font)
+            student_text_width = student_text_bbox[2] - student_text_bbox[0]
+            student_text_height = student_text_bbox[3] - student_text_bbox[1]
             
-            draw.text((qr_x + 100, qr_y + 220), "SCAN TO VERIFY", 
-                     fill=self.colors["gray"], font=fonts['small'], anchor="mm")
-        except:
-            pass
-        
-        footer_y = height - 120
-        draw.rectangle([border_thickness, footer_y, width-border_thickness, height-border_thickness], 
-                      fill=self.colors["light_blue"])
-        
-        draw.text((width//2, footer_y + 30), 
-                 f"ID: {college_id} • {config['name']} • Issued: {student_data['doc_date'].strftime('%B %Y')}", 
-                 fill=self.colors["navy"], font=fonts['value'], anchor="mm")
-        
-        draw.text((width//2, footer_y + 70), 
-                 "This card is property of the institution • Report if lost", 
-                 fill=self.colors["gray"], font=fonts['small'], anchor="mm")
-        
-        # ⚡⚡⚡ ULTRA FAST SAVE - Quality 85, compress_level 1
-        card.save(filepath, "PNG", quality=85, optimize=False, compress_level=1)
+            student_x = self.center_x - (student_text_width / 2)
+            student_y = self.pos_y
+
+            # Add white background behind student name
+            draw.rectangle(
+                [student_x - self.bg_padding_x, student_y - self.bg_padding_y, 
+                 student_x + student_text_width + self.bg_padding_x, 
+                 student_y + student_text_height + self.bg_padding_y],
+                fill="white"
+            )
+
+            # Write the student name
+            draw.text((student_x, student_y), full_name, font=student_font, fill=self.text_color)
+
+        except Exception as e:
+            logger.warning(f"Using fallback font due to: {e}")
+            # Fallback to basic font
+            font = ImageFont.load_default()
+            
+            # Draw college name
+            college_text_bbox = draw.textbbox((0, 0), college_name, font=font)
+            college_text_width = college_text_bbox[2] - college_text_bbox[0]
+            college_x = (width - college_text_width) / 2
+            college_y = height * 0.2
+            draw.text((college_x, college_y), college_name, font=font, fill=self.text_color)
+            
+            # Draw student name
+            full_name = student_data["full_name"]
+            student_text_bbox = draw.textbbox((0, 0), full_name, font=font)
+            student_text_width = student_text_bbox[2] - student_text_bbox[0]
+            student_x = (width - student_text_width) / 2
+            student_y = height * 0.4
+            draw.text((student_x, student_y), full_name, font=font, fill=self.text_color)
+
+        base.save(filepath, "PNG", quality=95, optimize=True)
         self.stats["ids_generated"] += 1
-        
-        return student_data
+        return filepath
 
     def save_student(self, student_data):
         """⚡⚡⚡⚡⚡ MEGA BATCH SAVE - 1000 at once"""
@@ -1000,16 +737,16 @@ class UnlimitedIDCardGenerator:
             return
         
         try:
-            with open(self.students_file, 'a', encoding='utf-8', buffering=32768) as f:  # Larger buffer
+            with open(self.students_file, 'a', encoding='utf-8', buffering=32768) as f:
                 for student_data in self.student_buffer:
                     line = f"{student_data['full_name']}|{student_data['student_id']}|{student_data['college']['id']}|{student_data['college']['name']}|{self.selected_country}|{student_data['doc_date'].strftime('%Y-%m-%d')}|{student_data['exp_date'].strftime('%Y-%m-%d')}\n"
                     f.write(line)
                 f.flush()
-            
+
             self.stats["students_saved"] += len(self.student_buffer)
             self.student_buffer.clear()
         except Exception as e:
-            print(f"⚠️ Flush error: {e}")
+            logger.error(f"⚠️ Flush error: {e}")
 
     def process_one(self, num):
         try:
@@ -1018,40 +755,33 @@ class UnlimitedIDCardGenerator:
                 return False
             
             student_data = self.generate_student_data(college)
-            self.create_professional_id_card(student_data)
+            self.create_simple_id_card(student_data)
             self.save_student(student_data)
             return True
         except Exception as e:
+            logger.error(f"Error processing student {num}: {e}")
             return False
 
     def generate_bulk(self, quantity):
         config = COUNTRY_CONFIG[self.selected_country]
-        print(f"\n⚡⚡⚡⚡⚡ Generating {quantity} IDs for {config['flag']} {config['name']}")
-        print(f"✅ {len(self.all_colleges)} colleges available")
-        print(f"✅ Using EXACT names from JSON (zero modifications)")
-        print(f"✅ Dates within 90 days (SheerID verified)")
-        print(f"✅ Large logos (300x300)")
-        print(f"⚡⚡⚡⚡⚡ ULTRA MEGA FAST: 5000 workers, 250 sessions, 1000 batch")
-        print(f"⚡⚡⚡⚡⚡ TARGET: 2000+ IDs per minute (10K in 5 min)")
-        print("="*70)
-        
+        logger.info(f"⚡⚡⚡⚡⚡ Generating {quantity} IDs for {config['flag']} {config['name']}")
+        logger.info(f"✅ {len(self.all_colleges)} colleges available")
+        logger.info("✅ Using EXACT names from JSON (zero modifications)")
+        logger.info("✅ ENGLISH NAMES: Only English student names")
+        logger.info("✅ Dates within 90 days (SheerID verified)")
+        logger.info("✅ SIMPLE FORMAT: Clean layout like STU36259874.png")
+        logger.info("⚡⚡⚡⚡⚡ ULTRA MEGA FAST: 5000 workers")
+        logger.info("=" * 70)
+
         start = time.time()
         success = 0
         
-        # Process in chunks for better photo cache management
+        # Process in chunks for better memory management
         chunk_size = 1000
         
         for chunk_start in range(0, quantity, chunk_size):
             chunk_end = min(chunk_start + chunk_size, quantity)
             chunk_qty = chunk_end - chunk_start
-            
-            # Ensure photo cache is full before each chunk
-            with self.photo_cache_lock:
-                cache_size = len(self.photo_cache)
-            
-            if cache_size < 50:
-                print(f"⚡⚡⚡ Refilling photo cache...")
-                self.refill_photo_cache_sync(50)
             
             with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_workers) as executor:
                 futures = [executor.submit(self.process_one, i+1) for i in range(chunk_start, chunk_end)]
@@ -1064,7 +794,7 @@ class UnlimitedIDCardGenerator:
                         elapsed = time.time() - start
                         rate = i / elapsed if elapsed > 0 else 0
                         rate_per_min = rate * 60
-                        print(f"Progress: {i}/{quantity} ({(i/quantity*100):.1f}%) | Rate: {rate_per_min:.0f} IDs/min | Cache: {len(self.photo_cache)}")
+                        print(f"Progress: {i}/{quantity} ({(i/quantity*100):.1f}%) | Rate: {rate_per_min:.0f} IDs/min")
         
         self._flush_buffer()
         
@@ -1076,14 +806,10 @@ class UnlimitedIDCardGenerator:
         print("="*70)
         print(f"⏱️  Time: {duration:.1f}s ({duration/60:.2f} minutes)")
         print(f"⚡⚡⚡⚡⚡ Speed: {rate_per_min:.0f} IDs/minute")
-        print(f"⚡⚡⚡⚡⚡ Rate: {success/duration:.1f} IDs/second")
         print(f"✅ Success: {success}/{quantity}")
-        print(f"📸 Photos: {self.stats['photos_downloaded']}")
         print(f"📁 Folder: {self.receipts_dir}/")
         print(f"📄 Students: {self.students_file}")
-        print(f"✅ NAMES: Exact from JSON (no modifications)")
-        print(f"✅ DATES: Within 90 days (SheerID)")
-        print(f"✅ LOGOS: 300x300 (prominent)")
+        print(f"✅ FORMAT: Same as STU36259874.png")
         print("="*70)
 
     def interactive(self):
@@ -1095,8 +821,9 @@ class UnlimitedIDCardGenerator:
             print(f"Country: {config['flag']} {config['name']}")
             print(f"Total Generated: {total}")
             print(f"Available Colleges: {len(self.all_colleges)}")
-            print(f"Mode: ULTRA MEGA FAST ⚡⚡⚡⚡⚡ (2000+ IDs/min)")
-            print(f"Photo Cache: {len(self.photo_cache)} ready")
+            print(f"Mode: ULTRA MEGA FAST ⚡⚡⚡⚡⚡")
+            print(f"Names: ENGLISH ONLY")
+            print(f"Format: Simple layout like STU36259874.png")
             print(f"{'='*60}")
             
             user_input = input(f"\nQuantity (0 to exit): ").strip()
@@ -1120,23 +847,16 @@ class UnlimitedIDCardGenerator:
 
 def main():
     print("\n" + "="*70)
-    print("⚡⚡⚡⚡⚡ SHEERID ID - ULTRA MEGA FAST - 2000+ IDs/MIN")
+    print("⚡⚡⚡⚡⚡ SHEERID ID - SIMPLE FORMAT GENERATOR")
     print("="*70)
-    print("📅 2025-11-11 19:29:07 UTC")
-    print("👤 Adeebaabkhan")
-    print("✅ EXACT NAMES: Uses JSON college names as-is (ZERO changes)")
+    print("✅ EXACT NAMES: Uses JSON college names as-is")
+    print("✅ ENGLISH NAMES: Only English student names")
     print("✅ DATES: Within 90 days (SheerID requirement)")
-    print("✅ LARGE LOGO: 300x300 prominent display")
+    print("✅ SIMPLE FORMAT: Clean layout like STU36259874.png")
     print("✅ FORMAT: STUDENTID_COLLEGEID.png")
     print("✅ SAVE: students.txt + receipts/")
-    print("✅ 24 COUNTRIES: US, CA, GB, IN, ID, AU, DE, FR, ES, IT,")
-    print("                 BR, MX, NL, SE, NO, DK, JP, KR, SG, NZ,")
-    print("                 ZA, CN, AE, PH")
-    print("✅ UNLIMITED: Can reuse colleges")
-    print("⚡⚡⚡⚡⚡ ULTRA MEGA FAST: 5000 workers, 250 sessions, 1000 batch")
-    print("⚡⚡⚡⚡⚡ TARGET: 2000+ IDs per minute (10K in 5 min)")
-    print("⚡⚡⚡⚡⚡ PHOTO CACHE: 100 pre-loaded photos")
-    print("⚡⚡⚡⚡⚡ OPTIMIZED I/O: Minimal delays, large buffers")
+    print("✅ 24 COUNTRIES: Full global support")
+    print("⚡⚡⚡⚡⚡ ULTRA MEGA FAST: 5000 workers")
     print("="*70)
     
     gen = UnlimitedIDCardGenerator()
