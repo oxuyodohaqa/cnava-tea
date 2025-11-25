@@ -5,6 +5,7 @@ Configuration, Imports, Colors, Countries Dictionary
 Author: Adeebaabkhan
 Date: 2025-10-22 08:38:21 UTC
 """
+import math
 import os
 import logging
 import json
@@ -17,6 +18,8 @@ from PIL import Image, ImageDraw, ImageFont
 import qrcode
 from faker import Faker
 import sqlite3
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     Updater,
@@ -32,6 +35,16 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO
 )
 logger = logging.getLogger(__name__)
+
+retry_strategy = Retry(
+    total=3,
+    status_forcelist=[429, 500, 502, 503, 504],
+    backoff_factor=0.5,
+    allowed_methods=["GET"],
+)
+http = requests.Session()
+http.mount("https://", HTTPAdapter(max_retries=retry_strategy))
+http.mount("http://", HTTPAdapter(max_retries=retry_strategy))
 
 BOT_TOKEN = os.getenv("BOT_TOKEN", "8233094350:AAEiVBsJ2RtLjlDfQ45ef1wCmRTwWtyNwMk")
 SUPER_ADMIN_ID = 7680006005
@@ -342,6 +355,39 @@ EXPECTED_COUNTRY_COUNT = 223
 COUNTRIES = {**COUNTRIES, **{k: v for k, v in EXTRA_COUNTRIES.items() if k not in COUNTRIES}}
 COUNTRY_COUNT = len(COUNTRIES)
 
+COUNTRY_PAGE_SIZE = 25
+SORTED_COUNTRY_ITEMS = sorted(COUNTRIES.items(), key=lambda kv: kv[1]['name'])
+
+
+def country_page_title(doc_prefix: str, page: int) -> str:
+    total_pages = max(1, math.ceil(COUNTRY_COUNT / COUNTRY_PAGE_SIZE))
+    base_title = "👨‍🏫 SELECT COUNTRY:" if doc_prefix == 'tc_' else "🎓 SELECT COUNTRY:"
+    return f"{base_title}\nPage {page + 1}/{total_pages} • {COUNTRY_COUNT} total"
+
+
+def build_country_keyboard(doc_prefix: str, page: int = 0, include_back: bool = True):
+    start = page * COUNTRY_PAGE_SIZE
+    end = start + COUNTRY_PAGE_SIZE
+    page_items = SORTED_COUNTRY_ITEMS[start:end]
+
+    keyboard = [
+        [InlineKeyboardButton(f"{cfg['flag']} {cfg['name']}", callback_data=f"{doc_prefix}{code}")]
+        for code, cfg in page_items
+    ]
+
+    nav_row = []
+    if start > 0:
+        nav_row.append(InlineKeyboardButton("⬅️ Prev", callback_data=f"page_{doc_prefix}{page - 1}"))
+    if end < COUNTRY_COUNT:
+        nav_row.append(InlineKeyboardButton("➡️ Next", callback_data=f"page_{doc_prefix}{page + 1}"))
+    if nav_row:
+        keyboard.append(nav_row)
+
+    if include_back:
+        keyboard.append([InlineKeyboardButton("🔙 Back", callback_data='back')])
+
+    return keyboard
+
 if COUNTRY_COUNT != EXPECTED_COUNTRY_COUNT:
     logger.warning(
         f"🌍 Country catalog has {COUNTRY_COUNT} entries (expected {EXPECTED_COUNTRY_COUNT}); "
@@ -585,21 +631,38 @@ def load_logo_image(size=100, fallback_text="TG"):
     return logo
 
 def download_real_photo(student_id):
-    max_attempts = 3
+    providers = [
+        (
+            "tpdne",
+            lambda sid: f"https://thispersondoesnotexist.com/?t={int(time.time())}&r={random.randint(1000, 9999)}&s={sid}",
+        ),
+        (
+            "picsum",
+            lambda sid: f"https://picsum.photos/seed/{sid}/800/1000",
+        ),
+        (
+            "randomuser",
+            lambda sid: f"https://randomuser.me/api/portraits/{random.choice(['men', 'women'])}/{random.randint(0, 99)}.jpg",
+        ),
+    ]
+
+    max_attempts = len(providers) * 2
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36', 'Accept': 'image/*'}
+
     for attempt in range(max_attempts):
+        source, build_url = providers[attempt % len(providers)]
         try:
-            url = f"https://thispersondoesnotexist.com/?t={int(time.time())}&r={random.randint(1000, 9999)}&s={student_id}"
-            headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36', 'Accept': 'image/*'}
-            response = requests.get(url, timeout=15, headers=headers, stream=True)
+            url = build_url(student_id)
+            response = http.get(url, timeout=20, headers=headers, stream=True)
             response.raise_for_status()
             photo = Image.open(BytesIO(response.content))
             photo = photo.convert("RGB")
-            logger.info(f"✅ Real photo downloaded: {student_id}")
+            logger.info(f"✅ Real photo downloaded from {source}: {student_id}")
             return photo
         except Exception as e:
-            logger.warning(f"⚠️ Photo attempt {attempt+1}/3 failed: {e}")
-            if attempt < max_attempts - 1:
-                time.sleep(1)
+            logger.warning(f"⚠️ Photo attempt {attempt + 1}/{max_attempts} ({source}) failed: {e}")
+            time.sleep(1)
+
     logger.warning(f"⚠️ Using placeholder for: {student_id}")
     return create_photo_placeholder(student_id)
 
@@ -1204,11 +1267,11 @@ def main_menu(update: Update, context: CallbackContext):
             context.user_data['type'] = 'teacher'
             return SELECT_COUNTRY
         else:
-            countries_list = list(COUNTRIES.items())
-            keyboard = [[InlineKeyboardButton(f"{v['flag']} {v['name']}", callback_data=f'tc_{k}')] for k, v in countries_list[:10]]
-            keyboard.append([InlineKeyboardButton("➡️ More", callback_data='more_t')])
-            keyboard.append([InlineKeyboardButton("🔙 Back", callback_data='back')])
-            query.edit_message_text("👨‍🏫 SELECT COUNTRY:", reply_markup=InlineKeyboardMarkup(keyboard))
+            keyboard = build_country_keyboard('tc_', 0)
+            query.edit_message_text(
+                country_page_title('tc_', 0),
+                reply_markup=InlineKeyboardMarkup(keyboard)
+            )
             context.user_data['type'] = 'teacher'
             return SELECT_COUNTRY
             
@@ -1230,11 +1293,11 @@ def main_menu(update: Update, context: CallbackContext):
             context.user_data['type'] = 'student'
             return SELECT_COUNTRY
         else:
-            countries_list = list(COUNTRIES.items())
-            keyboard = [[InlineKeyboardButton(f"{v['flag']} {v['name']}", callback_data=f'sc_{k}')] for k, v in countries_list[:10]]
-            keyboard.append([InlineKeyboardButton("➡️ More", callback_data='more_s')])
-            keyboard.append([InlineKeyboardButton("🔙 Back", callback_data='back')])
-            query.edit_message_text("🎓 SELECT COUNTRY:", reply_markup=InlineKeyboardMarkup(keyboard))
+            keyboard = build_country_keyboard('sc_', 0)
+            query.edit_message_text(
+                country_page_title('sc_', 0),
+                reply_markup=InlineKeyboardMarkup(keyboard)
+            )
             context.user_data['type'] = 'student'
             return SELECT_COUNTRY
             
@@ -1300,41 +1363,46 @@ def select_country(update: Update, context: CallbackContext):
             return STUDENT_SELECT_COLLEGE
     
     if query.data == 'choose_new_teacher':
-        countries_list = list(COUNTRIES.items())
-        keyboard = [[InlineKeyboardButton(f"{v['flag']} {v['name']}", callback_data=f'tc_{k}')] for k, v in countries_list[:10]]
-        keyboard.append([InlineKeyboardButton("➡️ More", callback_data='more_t')])
-        keyboard.append([InlineKeyboardButton("🔙 Back", callback_data='back')])
-        query.edit_message_text("👨‍🏫 SELECT COUNTRY:", reply_markup=InlineKeyboardMarkup(keyboard))
+        keyboard = build_country_keyboard('tc_', 0)
+        query.edit_message_text(
+            country_page_title('tc_', 0),
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
         return SELECT_COUNTRY
-        
+
     if query.data == 'choose_new_student':
-        countries_list = list(COUNTRIES.items())
-        keyboard = [[InlineKeyboardButton(f"{v['flag']} {v['name']}", callback_data=f'sc_{k}')] for k, v in countries_list[:10]]
-        keyboard.append([InlineKeyboardButton("➡️ More", callback_data='more_s')])
-        keyboard.append([InlineKeyboardButton("🔙 Back", callback_data='back')])
-        query.edit_message_text("🎓 SELECT COUNTRY:", reply_markup=InlineKeyboardMarkup(keyboard))
+        keyboard = build_country_keyboard('sc_', 0)
+        query.edit_message_text(
+            country_page_title('sc_', 0),
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
         return SELECT_COUNTRY
-    
+
+    if query.data.startswith('page_tc_') or query.data.startswith('page_sc_'):
+        _, doc_prefix, page = query.data.split('_')
+        page_num = int(page)
+        doc_prefix = f"{doc_prefix}_"
+        keyboard = build_country_keyboard(doc_prefix, page_num)
+        query.edit_message_text(
+            country_page_title(doc_prefix, page_num),
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+        return SELECT_COUNTRY
     if query.data in ['more_t', 'more_s']:
-        countries_list = list(COUNTRIES.items())
-        doc_type = 'tc_' if query.data == 'more_t' else 'sc_'
-        keyboard = [[InlineKeyboardButton(f"{v['flag']} {v['name']}", callback_data=f'{doc_type}{k}')] for k, v in countries_list[10:]]
-        keyboard.append([InlineKeyboardButton("⬅️ Back", callback_data='back_countries')])
-        query.edit_message_text(f"🌍 ALL {COUNTRY_COUNT} COUNTRIES:", reply_markup=InlineKeyboardMarkup(keyboard))
+        doc_prefix = 'tc_' if query.data == 'more_t' else 'sc_'
+        keyboard = build_country_keyboard(doc_prefix, 1)
+        query.edit_message_text(
+            country_page_title(doc_prefix, 1),
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
         return SELECT_COUNTRY
     elif query.data == 'back_countries':
-        if context.user_data.get('type') == 'teacher':
-            countries_list = list(COUNTRIES.items())
-            keyboard = [[InlineKeyboardButton(f"{v['flag']} {v['name']}", callback_data=f'tc_{k}')] for k, v in countries_list[:10]]
-            keyboard.append([InlineKeyboardButton("➡️ More", callback_data='more_t')])
-            keyboard.append([InlineKeyboardButton("🔙 Back", callback_data='back')])
-            query.edit_message_text("👨‍🏫 SELECT COUNTRY:", reply_markup=InlineKeyboardMarkup(keyboard))
-        else:
-            countries_list = list(COUNTRIES.items())
-            keyboard = [[InlineKeyboardButton(f"{v['flag']} {v['name']}", callback_data=f'sc_{k}')] for k, v in countries_list[:10]]
-            keyboard.append([InlineKeyboardButton("➡️ More", callback_data='more_s')])
-            keyboard.append([InlineKeyboardButton("🔙 Back", callback_data='back')])
-            query.edit_message_text("🎓 SELECT COUNTRY:", reply_markup=InlineKeyboardMarkup(keyboard))
+        doc_prefix = 'tc_' if context.user_data.get('type') == 'teacher' else 'sc_'
+        keyboard = build_country_keyboard(doc_prefix, 0)
+        query.edit_message_text(
+            country_page_title(doc_prefix, 0),
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
         return SELECT_COUNTRY
     elif query.data.startswith('tc_'):
         code = query.data.replace('tc_', '')
