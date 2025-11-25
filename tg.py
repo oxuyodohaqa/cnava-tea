@@ -18,18 +18,19 @@ import qrcode
 from faker import Faker
 import sqlite3
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, MessageHandler, Filters, ConversationHandler, CallbackContext
+from telegram.ext import (
+    Updater,
+    CommandHandler,
+    CallbackQueryHandler,
+    MessageHandler,
+    Filters,
+    ConversationHandler,
+    CallbackContext,
+)
 
-BOT_TOKEN = os.getenv("BOT_TOKEN", "8233094350:AAEiVBsJ2RtLjlDfQ45ef1wCmRTwWtyNwMk")
-SUPER_ADMIN_ID = 7680006005
-ADMIN_IDS = {SUPER_ADMIN_ID}
-extra_admins = os.getenv("ADMIN_IDS", "").split(",") if os.getenv("ADMIN_IDS") else []
-for admin_id in extra_admins:
-    try:
-        ADMIN_IDS.add(int(admin_id.strip()))
-    except ValueError:
-        logger.warning(f"Skipping invalid admin id in ADMIN_IDS env: {admin_id}")
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO
+)
 logger = logging.getLogger(__name__)
 
 BOT_TOKEN = os.getenv("BOT_TOKEN", "8233094350:AAEiVBsJ2RtLjlDfQ45ef1wCmRTwWtyNwMk")
@@ -52,6 +53,8 @@ RED = (220, 52, 69)
 BORDER_GRAY = (200, 200, 200)
 BLUE = (25, 118, 210)
 LIGHT_GRAY = (240, 240, 240)
+
+LOGO_PATH = os.getenv("LOGO_PATH", "assets/logo.png")
 
 # PROFESSIONS - 47 OPTIONS
 TEACHER_PROFESSIONS = [
@@ -542,6 +545,29 @@ def get_font(size=14, bold=False):
         pass
     return ImageFont.load_default()
 
+
+def load_logo_image(size=100, fallback_text="TG"):
+    """Load a custom logo from LOGO_PATH or draw a branded fallback."""
+    if LOGO_PATH and os.path.isfile(LOGO_PATH):
+        try:
+            logo = Image.open(LOGO_PATH).convert("RGBA")
+            logo.thumbnail((size, size), Image.Resampling.LANCZOS)
+            return logo
+        except Exception as exc:
+            logger.warning(f"⚠️ Failed to load logo {LOGO_PATH}: {exc}")
+
+    logo = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(logo)
+    draw.ellipse([(0, 0), (size, size)], fill=BLUE)
+    draw.text(
+        (size // 2, size // 2),
+        fallback_text[:3].upper(),
+        fill=WHITE,
+        font=get_font(size // 2, True),
+        anchor="mm",
+    )
+    return logo
+
 def download_real_photo(student_id):
     max_attempts = 3
     for attempt in range(max_attempts):
@@ -622,253 +648,265 @@ def load_colleges(code):
 # ============================================================
 def gen_salary_receipt_auto(school_name, teacher_name, teacher_id, profession, country_code='IN'):
     cfg = COUNTRIES.get(country_code, COUNTRIES['IN'])
-    base_salary = random.randint(*cfg['salary'])
-    allowances = int(base_salary * 0.4)
-    bonus = int(base_salary * 0.05)
-    tax = int(base_salary * 0.08)
-    deductions = int(base_salary * 0.03)
-    insurance = int(base_salary * 0.02)
-    net_salary = base_salary + allowances + bonus - tax - deductions - insurance
-    today = datetime.now()
-    width, height = 900, 760
+    width, height = 900, 800
     img = Image.new('RGB', (width, height), WHITE)
     d = ImageDraw.Draw(img)
-    d.rectangle([(0, 0), (width, 140)], fill=DARK_GRAY)
-    logo_x, logo_y = 30, 20
-    logo_size = 80
-    d.rectangle([(logo_x, logo_y), (logo_x + logo_size, logo_y + logo_size)], fill=WHITE, outline=DARK_GRAY, width=2)
-    abbr = ''.join([w[0] for w in school_name.split()[:3]]).upper()[:3]
-    d.text((logo_x + logo_size // 2, logo_y + logo_size // 2), abbr, fill=DARK_GRAY, font=get_font(28, True), anchor='mm')
-    d.text((logo_x + logo_size + 25, 30), school_name.upper(), fill=WHITE, font=get_font(20, True))
-    d.text((logo_x + logo_size + 25, 65), f"{cfg['flag']} {cfg['name']}", fill=GOLD, font=get_font(13))
-    d.text((width - 30, 45), "MONTHLY PAYSLIP", fill=GOLD, font=get_font(17, True), anchor='rt')
-    d.text((width - 30, 75), "Verified Copy", fill=WHITE, font=get_font(11), anchor='rt')
-    y = 155
-    d.rectangle([(30, y), (width - 30, y + 50)], outline=BORDER_GRAY, width=1, fill=LIGHT_GRAY)
-    pay_period_start = datetime(today.year, today.month, 1)
-    pay_period_end = datetime(today.year, today.month, 28) + timedelta(days=2)
-    pay_period_end = pay_period_end.replace(day=1) - timedelta(days=1)
-    d.text((40, y + 12), f"Payment For: {pay_period_start.strftime('%b %d, %Y')} - {pay_period_end.strftime('%b %d, %Y')}", fill=BLACK, font=get_font(12, True))
-    d.text((width - 40, y + 12), f"Issued: {today.strftime('%b %d, %Y')}", fill=BLACK, font=get_font(12, True), anchor='rt')
-    d.text((40, y + 30), "Payment Method: Direct Deposit", fill=BLACK, font=get_font(11))
-    d.text((width - 40, y + 30), "Currency: {cfg['symbol']}", fill=BLACK, font=get_font(11), anchor='rt')
-    y = y + 75
-    receipt_no = f"RCP/{country_code}/{random.randint(100000, 999999)}"
-    d.text((40, y), f"Receipt No: {receipt_no}", fill=BLACK, font=get_font(12, True))
-    d.text((width - 40, y), f"Document ID: {random.randint(100000, 999999)}", fill=BLACK, font=get_font(12, True), anchor='rt')
-    y = 215
-    d.text((40, y), "Employee Details", fill=DARK_GRAY, font=get_font(14, True))
-    y += 28
-    d.text((40, y), "Name", fill=BLACK, font=get_font(12, True))
-    d.text((180, y), teacher_name.upper(), fill=BLUE, font=get_font(13, True))
-    d.text((520, y), "Employee ID", fill=BLACK, font=get_font(12, True))
-    d.text((700, y), teacher_id, fill=RED, font=get_font(13, True))
-    y += 28
-    d.text((40, y), "Role", fill=BLACK, font=get_font(12, True))
-    d.text((180, y), profession, fill=BLACK, font=get_font(12))
-    d.text((520, y), "Department", fill=BLACK, font=get_font(12, True))
-    d.text((700, y), f"{profession.split()[0]} Dept", fill=BLACK, font=get_font(12))
+    today = datetime.now()
+    period_start = today - timedelta(days=30)
+    period_end = today
+    base_salary = random.randint(*cfg['salary'])
+    allowances = int(base_salary * random.uniform(0.05, 0.15))
+    bonus = random.randint(500, 1500)
+    overtime = random.randint(100, 600)
+    tax = int(base_salary * 0.08)
+    deductions = random.randint(100, 400)
+    insurance = random.randint(100, 300)
+    net_salary = base_salary + allowances + bonus + overtime - tax - deductions - insurance
 
-    y += 60
-    d.text((40, y), "Earnings", fill=DARK_GRAY, font=get_font(14, True))
-    d.text((520, y), "Deductions", fill=DARK_GRAY, font=get_font(14, True))
-    y += 25
-    # Earnings
-    d.text((40, y), "Base Salary", fill=BLACK, font=get_font(12))
-    d.text((260, y), f"{cfg['symbol']}{base_salary:,}", fill=GREEN, font=get_font(12, True), anchor='rt')
-    y += 22
-    d.text((40, y), "Allowances", fill=BLACK, font=get_font(12))
-    d.text((260, y), f"{cfg['symbol']}{allowances:,}", fill=GREEN, font=get_font(12, True), anchor='rt')
-    y += 22
-    d.text((40, y), "Bonus", fill=BLACK, font=get_font(12))
-    d.text((260, y), f"{cfg['symbol']}{bonus:,}", fill=GREEN, font=get_font(12, True), anchor='rt')
-    earnings_total = base_salary + allowances + bonus
+    d.rectangle([(0, 0), (width, 170)], fill=BLUE)
+    d.rectangle([(0, 140), (width, 170)], fill=GOLD)
+    d.text((34, 30), school_name.upper(), fill=WHITE, font=get_font(24, True))
+    d.text((34, 74), f"{cfg['flag']} {cfg['name']}", fill=WHITE, font=get_font(14))
+    d.text((width - 34, 34), "PAYSLIP", fill=WHITE, font=get_font(22, True), anchor='rt')
+    d.text((width - 34, 72), today.strftime('%B %d, %Y'), fill=WHITE, font=get_font(13), anchor='rt')
 
-    # Deductions
-    y = 328
-    d.text((520, y), "Tax (8%)", fill=BLACK, font=get_font(12))
-    d.text((760, y), f"-{cfg['symbol']}{tax:,}", fill=RED, font=get_font(12, True), anchor='rt')
-    y += 22
-    d.text((520, y), "Pension", fill=BLACK, font=get_font(12))
-    d.text((760, y), f"-{cfg['symbol']}{deductions:,}", fill=RED, font=get_font(12, True), anchor='rt')
-    y += 22
-    d.text((520, y), "Insurance", fill=BLACK, font=get_font(12))
-    d.text((760, y), f"-{cfg['symbol']}{insurance:,}", fill=RED, font=get_font(12, True), anchor='rt')
+    d.rounded_rectangle([(24, 190), (width - 24, 290)], radius=14, outline=BORDER_GRAY, width=2, fill=LIGHT_GRAY)
+    d.text((44, 212), teacher_name.upper(), fill=BLACK, font=get_font(17, True))
+    d.text((44, 244), f"ID: {teacher_id}", fill=DARK_GRAY, font=get_font(12))
+    d.text((300, 212), f"Position: {profession}", fill=DARK_GRAY, font=get_font(12))
+    d.text((300, 244), f"Pay Period: {period_start.strftime('%b %d')} - {period_end.strftime('%b %d, %Y')}", fill=DARK_GRAY, font=get_font(12))
+    d.text((width - 44, 212), "Status: Paid", fill=GREEN, font=get_font(13, True), anchor='rt')
+
+    start_y = 320
+    box_height = 300
+    d.rounded_rectangle([(24, start_y), (width - 24, start_y + box_height)], radius=20, outline=BORDER_GRAY, width=2, fill=WHITE)
+    d.text((44, start_y + 18), "EARNINGS", fill=DARK_GRAY, font=get_font(14, True))
+    d.text((width // 2 + 16, start_y + 18), "DEDUCTIONS", fill=DARK_GRAY, font=get_font(14, True))
+
+    line_y = start_y + 55
+    earnings = [
+        ("Base Salary", base_salary),
+        ("Allowances", allowances),
+        ("Performance Bonus", bonus),
+        ("Overtime", overtime),
+    ]
+    for label, amount in earnings:
+        d.text((44, line_y), label, fill=BLACK, font=get_font(12))
+        d.text((width // 2 - 34, line_y), f"{cfg['symbol']}{amount:,}", fill=GREEN, font=get_font(12, True), anchor='rt')
+        line_y += 28
+
+    line_y = start_y + 55
+    deductions_list = [
+        ("Tax (8%)", tax),
+        ("Retirement/Pension", deductions),
+        ("Health Insurance", insurance),
+    ]
+    for label, amount in deductions_list:
+        d.text((width // 2 + 16, line_y), label, fill=BLACK, font=get_font(12))
+        d.text((width - 44, line_y), f"-{cfg['symbol']}{amount:,}", fill=RED, font=get_font(12, True), anchor='rt')
+        line_y += 28
+
+    summary_y = start_y + box_height + 16
+    d.rounded_rectangle([(24, summary_y), (width - 24, summary_y + 120)], radius=16, outline=GREEN, width=3, fill=LIGHT_GRAY)
+    d.rectangle([(24, summary_y), (width - 24, summary_y + 36)], fill=GREEN)
+    d.text((40, summary_y + 10), "PAYMENT CONFIRMED", fill=WHITE, font=get_font(14, True))
+    gross = base_salary + allowances + bonus + overtime
     total_deductions = tax + deductions + insurance
-
-    y += 40
-    d.rectangle([(30, y), (width - 30, y + 60)], outline=BORDER_GRAY, width=2, fill=LIGHT_GRAY)
-    d.text((40, y + 12), "Gross Earnings", fill=BLACK, font=get_font(12, True))
-    d.text((260, y + 12), f"{cfg['symbol']}{earnings_total:,}", fill=BLACK, font=get_font(12, True), anchor='rt')
-    d.text((520, y + 12), "Total Deductions", fill=BLACK, font=get_font(12, True))
-    d.text((760, y + 12), f"-{cfg['symbol']}{total_deductions:,}", fill=BLACK, font=get_font(12, True), anchor='rt')
-    d.text((40, y + 35), "Net Salary", fill=BLACK, font=get_font(13, True))
-    d.text((260, y + 35), f"{cfg['symbol']}{net_salary:,}", fill=BLUE, font=get_font(14, True), anchor='rt')
-    d.text((520, y + 35), "Status", fill=BLACK, font=get_font(13, True))
-    d.text((760, y + 35), "PAID", fill=GREEN, font=get_font(14, True), anchor='rt')
-
-    y += 100
-    box_height = 140
-    d.rectangle([(30, y), (width - 30, y + box_height)], outline=GREEN, width=3, fill=LIGHT_GRAY)
-    d.rectangle([(30, y), (width - 30, y + 35)], fill=GREEN)
-    d.text((40, y + 10), "✅ PAYMENT CONFIRMED", fill=WHITE, font=get_font(14, True))
+    d.text((40, summary_y + 54), f"Gross Earnings", fill=BLACK, font=get_font(12))
+    d.text((260, summary_y + 54), f"{cfg['symbol']}{gross:,}", fill=BLACK, font=get_font(12, True), anchor='rt')
+    d.text((330, summary_y + 54), "Total Deductions", fill=BLACK, font=get_font(12))
+    d.text((560, summary_y + 54), f"-{cfg['symbol']}{total_deductions:,}", fill=RED, font=get_font(12, True), anchor='rt')
+    d.text((640, summary_y + 54), "Net Salary", fill=BLACK, font=get_font(13, True))
+    d.text((width - 34, summary_y + 54), f"{cfg['symbol']}{net_salary:,}", fill=BLUE, font=get_font(14, True), anchor='rt')
     txn_id = f"TXN{random.randint(1000000, 9999999)}"
     bank_ref = f"REF{random.randint(100000, 999999)}"
-    d.text((40, y + 55), f"Transaction ID: {txn_id}", fill=BLACK, font=get_font(12, True))
-    d.text((40, y + 80), f"Bank Reference: {bank_ref}", fill=BLACK, font=get_font(12, True))
-    d.text((40, y + 105), "Payment Channel: ACH", fill=BLACK, font=get_font(11))
-    d.text((width - 220, y + 55), "Authorized Signature", fill=BLACK, font=get_font(11))
-    d.line([(width - 220, y + 90), (width - 40, y + 90)], fill=BORDER_GRAY, width=2)
-    d.text((width - 40, y + 95), "HR Manager", fill=BLACK, font=get_font(10), anchor='rt')
-    y = 720
-    footer_text = f"Generated: {today.strftime('%m/%d/%Y %H:%M:%S')} UTC | Country: {cfg['name']} | Authentic Document"
-    d.text((40, y), footer_text, fill=DARK_GRAY, font=get_font(10))
+    d.text((40, summary_y + 86), f"Transaction ID: {txn_id}", fill=DARK_GRAY, font=get_font(11))
+    d.text((330, summary_y + 86), f"Bank Reference: {bank_ref}", fill=DARK_GRAY, font=get_font(11))
+    d.text((640, summary_y + 86), "Mode: Direct Deposit", fill=DARK_GRAY, font=get_font(11))
+
+    footer_y = summary_y + 150
+    d.text((40, footer_y), f"Issued: {today.strftime('%b %d, %Y %H:%M UTC')}", fill=DARK_GRAY, font=get_font(10))
+    d.text((width - 40, footer_y), f"Country: {cfg['name']} | Authorized Document", fill=DARK_GRAY, font=get_font(10), anchor='rt')
     return img
+
 
 # ============================================================
 # TEACHER ID CARD GENERATION
 # ============================================================
 def gen_teacher_id_auto(school_name, teacher_name, teacher_id, profession, country_code='IN'):
     cfg = COUNTRIES.get(country_code, COUNTRIES['IN'])
-    width, height = 920, 600
+    fake = Faker(cfg['locale'])
+    width, height = 1000, 640
     img = Image.new('RGB', (width, height), WHITE)
     d = ImageDraw.Draw(img)
-    photo = download_real_photo(teacher_id)
-    d.rectangle([(0, 0), (width, 140)], fill=BLUE)
-    logo_x, logo_y = 30, 20
-    logo_size = 100
-    d.rectangle([(logo_x, logo_y), (logo_x + logo_size, logo_y + logo_size)], fill=WHITE, outline=BLUE, width=2)
+
+    backdrop = (247, 248, 250)
+    d.rectangle([(0, 0), (width, height)], fill=backdrop)
+    d.rectangle([(0, 0), (width, 160)], fill=WHITE)
+    d.polygon([(width - 280, 0), (width, 0), (width, 220)], fill=BLUE)
+    d.rectangle([(0, 140), (width, 170)], fill=GOLD)
+
+    logo_size = 120
     abbr = ''.join([w[0] for w in school_name.split()[:3]]).upper()[:3]
-    d.text((logo_x + logo_size // 2, logo_y + logo_size // 2), abbr, fill=BLUE, font=get_font(36, True), anchor='mm')
-    d.text((160, 35), school_name.upper(), fill=WHITE, font=get_font(21, True))
-    d.text((160, 75), f"{cfg['flag']} {cfg['name']}", fill=WHITE, font=get_font(13))
-    d.text((width - 40, 35), "TEACHER", fill=WHITE, font=get_font(19, True), anchor='rt')
-    d.text((width - 40, 70), "ID CARD", fill=WHITE, font=get_font(19, True), anchor='rt')
-    d.text((width - 40, 110), cfg['name'], fill=GOLD, font=get_font(12), anchor='rt')
-    y = 180
-    photo_x, photo_y = 40, y
-    photo_w, photo_h = 160, 210
-    photo_resized = photo.resize((photo_w, photo_h), Image.Resampling.LANCZOS)
-    d.rectangle([(photo_x - 2, photo_y - 2), (photo_x + photo_w + 2, photo_y + photo_h + 2)], outline=BLUE, width=3, fill=WHITE)
-    img.paste(photo_resized, (photo_x, photo_y))
-    logger.info(f"✅ Teacher photo embedded at ({photo_x}, {photo_y})")
-    detail_x = 230
-    d.text((detail_x, y), "Name:", fill=BLACK, font=get_font(13, True))
-    name_band = [(detail_x, y + 22), (detail_x + 440, y + 58)]
-    d.rounded_rectangle(name_band, radius=8, fill=WHITE, outline=BLUE, width=2)
-    d.text(((name_band[0][0] + name_band[1][0]) // 2, y + 40), teacher_name.upper(), fill=BLUE, font=get_font(21, True), anchor='mm')
-    y += 75
-    d.text((detail_x, y), "Teacher ID:", fill=BLACK, font=get_font(13, True))
-    id_band = [(detail_x, y + 22), (detail_x + 300, y + 58)]
-    d.rounded_rectangle(id_band, radius=8, fill=WHITE, outline=RED, width=2)
-    d.text(((id_band[0][0] + id_band[1][0]) // 2, y + 40), teacher_id, fill=RED, font=get_font(19, True), anchor='mm')
-    y += 75
-    d.text((detail_x, y), "Profession:", fill=BLACK, font=get_font(13, True))
-    d.text((detail_x, y + 28), profession, fill=BLACK, font=get_font(12))
-    y += 70
-    d.text((detail_x, y), "Department:", fill=BLACK, font=get_font(13, True))
-    d.text((detail_x, y + 28), f"{profession.split()[0]} Department", fill=BLACK, font=get_font(12))
-    today = datetime.now()
-    expiry = today + timedelta(days=1460)
-    d.text((40, photo_y + photo_h + 20), f"Issue Date: {today.strftime('%m/%d/%Y')}", fill=BLACK, font=get_font(11, True))
-    d.text((40, photo_y + photo_h + 42), f"Valid Until: {expiry.strftime('%m/%d/%Y')}", fill=BLACK, font=get_font(11, True))
-    reg_no = f"REG/{country_code}/{random.randint(100000, 999999)}"
-    d.text((detail_x, photo_y + photo_h + 20), f"Reg No: {reg_no}", fill=BLACK, font=get_font(11, True))
+    logo = load_logo_image(logo_size, fallback_text=abbr or "TG")
+    logo_bg = Image.new('RGBA', (logo_size + 20, logo_size + 20), (255, 255, 255, 0))
+    logo_bg.paste(logo, (10, 10), logo)
+    img.paste(logo_bg, (26, 12), logo_bg)
+
+    d.text((170, 32), school_name.upper(), fill=BLUE, font=get_font(24, True))
+    d.text((170, 76), f"{cfg['flag']} {cfg['name']}", fill=DARK_GRAY, font=get_font(14))
+    d.text((width - 30, 34), "TEACHER ID", fill=WHITE, font=get_font(20, True), anchor='rt')
+
+    photo = download_real_photo(teacher_id).resize((220, 260), Image.Resampling.LANCZOS)
+    photo_x, photo_y = 40, 210
+    frame = [(photo_x - 6, photo_y - 6), (photo_x + 220 + 6, photo_y + 260 + 6)]
+    d.rounded_rectangle(frame, radius=20, fill=WHITE, outline=BLUE, width=3)
+    img.paste(photo, (photo_x, photo_y))
+
+    d.text((300, 200), teacher_name.upper(), fill=BLACK, font=get_font(30, True))
+    d.text((300, 240), profession, fill=DARK_GRAY, font=get_font(15))
+    d.text((300, 268), f"Teacher ID: {teacher_id}", fill=BLUE, font=get_font(14, True))
+
+    issued = datetime.now()
+    expiry = issued + timedelta(days=365 * 4)
+    birthdate = fake.date_between(start_date='-45y', end_date='-28y')
+    phone = fake.phone_number()
+    address = fake.address().replace('\n', ', ')
+
+    left_x = 300
+    right_x = 620
+    base_y = 310
+    line_gap = 34
+
+    fields_left = [
+        ("Subject", profession.split()[0] if profession else "Teaching"),
+        ("Phone", phone),
+        ("Issued", issued.strftime('%d %B %Y')),
+        ("DOB", birthdate.strftime('%d %B %Y')),
+    ]
+    for idx, (label, value) in enumerate(fields_left):
+        y = base_y + idx * line_gap
+        d.text((left_x, y), label, fill=DARK_GRAY, font=get_font(12, True))
+        d.text((left_x, y + 18), value, fill=BLACK, font=get_font(13))
+
+    fields_right = [
+        ("Teacher ID", teacher_id),
+        ("Address", address),
+        ("Valid Thru", expiry.strftime('%d %B %Y')),
+    ]
+    for idx, (label, value) in enumerate(fields_right):
+        y = base_y + idx * line_gap
+        d.text((right_x, y), label, fill=DARK_GRAY, font=get_font(12, True))
+        d.text((right_x, y + 18), value, fill=BLACK, font=get_font(13))
+
     try:
-        qr_img = generate_qr_code({'name': teacher_name, 'id': teacher_id, 'program': profession}, {'name': school_name, 'id': ''}, country_code)
-        qr_size = 90
-        qr_resized = qr_img.resize((qr_size, qr_size), Image.Resampling.LANCZOS)
-        qr_x = width - qr_size - 25
-        qr_y = photo_y + photo_h - qr_size - 5
-        d.rectangle([(qr_x - 3, qr_y - 3), (qr_x + qr_size + 3, qr_y + qr_size + 3)], outline=BLUE, width=2, fill=WHITE)
-        img.paste(qr_resized, (qr_x, qr_y))
-        logger.info(f"✅ Teacher QR code embedded at ({qr_x}, {qr_y})")
+        qr_payload = {'name': teacher_name, 'id': teacher_id, 'role': profession}
+        qr_img = generate_qr_code(qr_payload, {'name': school_name, 'id': teacher_id}, country_code)
+        qr_size = 110
+        qr = qr_img.resize((qr_size, qr_size), Image.Resampling.LANCZOS)
+        qr_x = width - qr_size - 40
+        qr_y = height - qr_size - 70
+        d.rounded_rectangle([(qr_x - 8, qr_y - 8), (qr_x + qr_size + 8, qr_y + qr_size + 8)], radius=16, fill=WHITE, outline=BLUE, width=2)
+        img.paste(qr, (qr_x, qr_y))
     except Exception as e:
         logger.error(f"❌ QR error: {e}")
-    y = height - 45
-    d.text((40, y), f"Official Teacher ID - {cfg['name']}", fill=BLUE, font=get_font(12, True))
-    d.text((40, y + 20), f"Generated: {today.strftime('%m/%d/%Y %H:%M:%S')} UTC", fill=BLUE, font=get_font(10))
-    d.text((width - 40, y + 8), "AUTHORIZED DOCUMENT", fill=BLUE, font=get_font(11, True), anchor='rt')
+
+    footer_y = height - 52
+    d.rectangle([(0, footer_y - 16), (width, height)], fill=BLUE)
+    d.text((30, footer_y), "Professional Faculty Identification", fill=WHITE, font=get_font(12, True))
+    d.text((width - 30, footer_y), issued.strftime('%d %b %Y %H:%M UTC'), fill=WHITE, font=get_font(11), anchor='rt')
     return img
+
+
 
 # ============================================================
 # STUDENT ID CARD GENERATION
 # ============================================================
 def gen_student_id_auto(school_name, student_name, student_id, program, country_code='IN'):
     cfg = COUNTRIES.get(country_code, COUNTRIES['IN'])
-    width, height = 920, 600
+    fake = Faker(cfg['locale'])
+    width, height = 1000, 640
     img = Image.new('RGB', (width, height), WHITE)
     d = ImageDraw.Draw(img)
-    d.rectangle([(0, 0), (width, height)], fill=(247, 248, 250))
-    d.rectangle([(20, 20), (width - 20, height - 20)], outline=BORDER_GRAY, width=2)
-    photo = download_real_photo(student_id)
-    d.rectangle([(0, 0), (width, 140)], fill=BLUE)
-    d.rectangle([(0, 110), (width, 140)], fill=(14, 71, 161))
-    logo_x, logo_y = 30, 20
-    logo_size = 100
-    d.rectangle([(logo_x, logo_y), (logo_x + logo_size, logo_y + logo_size)], fill=WHITE, outline=BLUE, width=2)
+
+    backdrop = (247, 248, 250)
+    d.rectangle([(0, 0), (width, height)], fill=backdrop)
+    d.rectangle([(0, 0), (width, 160)], fill=WHITE)
+    d.polygon([(width - 280, 0), (width, 0), (width, 220)], fill=BLUE)
+    d.rectangle([(0, 140), (width, 170)], fill=GOLD)
+
+    logo_size = 120
     abbr = ''.join([w[0] for w in school_name.split()[:3]]).upper()[:3]
-    d.text((logo_x + logo_size // 2, logo_y + logo_size // 2), abbr, fill=BLUE, font=get_font(36, True), anchor='mm')
-    d.text((160, 35), school_name.upper(), fill=WHITE, font=get_font(21, True))
-    d.text((160, 75), f"{cfg['flag']} {cfg['name']}", fill=WHITE, font=get_font(13))
-    d.text((width - 40, 35), "STUDENT", fill=WHITE, font=get_font(19, True), anchor='rt')
-    d.text((width - 40, 70), "ID CARD", fill=WHITE, font=get_font(19, True), anchor='rt')
-    d.text((width - 40, 110), cfg['name'], fill=GOLD, font=get_font(12), anchor='rt')
-    y = 180
-    photo_x, photo_y = 40, y
-    photo_w, photo_h = 160, 210
-    photo_resized = photo.resize((photo_w, photo_h), Image.Resampling.LANCZOS)
-    d.rectangle([(photo_x - 2, photo_y - 2), (photo_x + photo_w + 2, photo_y + photo_h + 2)], outline=BLUE, width=3, fill=WHITE)
-    img.paste(photo_resized, (photo_x, photo_y))
-    logger.info(f"✅ Student photo embedded at ({photo_x}, {photo_y})")
-    detail_x = 230
-    d.text((detail_x, y), "Name:", fill=BLACK, font=get_font(13, True))
-    name_band = [(detail_x, y + 22), (detail_x + 440, y + 58)]
-    d.rounded_rectangle(name_band, radius=8, fill=WHITE, outline=BLUE, width=2)
-    d.text(((name_band[0][0] + name_band[1][0]) // 2, y + 40), student_name.upper(), fill=BLUE, font=get_font(21, True), anchor='mm')
-    y += 75
-    d.text((detail_x, y), "Student ID:", fill=BLACK, font=get_font(13, True))
-    id_band = [(detail_x, y + 22), (detail_x + 300, y + 58)]
-    d.rounded_rectangle(id_band, radius=8, fill=WHITE, outline=RED, width=2)
-    d.text(((id_band[0][0] + id_band[1][0]) // 2, y + 40), student_id, fill=RED, font=get_font(19, True), anchor='mm')
-    y += 75
-    d.text((detail_x, y), "Program:", fill=BLACK, font=get_font(13, True))
-    program_short = program[:40] if len(program) > 40 else program
-    d.text((detail_x, y + 28), program_short, fill=BLACK, font=get_font(11))
-    y += 70
-    d.text((detail_x, y), "Year:", fill=BLACK, font=get_font(13, True))
-    d.text((detail_x, y + 28), "2nd Year", fill=BLACK, font=get_font(12))
-    y += 65
-    d.text((detail_x, y), "Issued By:", fill=BLACK, font=get_font(12, True))
-    d.text((detail_x + 120, y + 25), "Registrar", fill=BLACK, font=get_font(11), anchor='mm')
-    d.line([(detail_x + 60, y + 32), (detail_x + 180, y + 32)], fill=BORDER_GRAY, width=2)
-    today = datetime.now()
-    expiry = today + timedelta(days=1460)
-    d.text((40, photo_y + photo_h + 20), f"Issued: {today.strftime('%m/%d/%Y')}", fill=BLACK, font=get_font(11, True))
-    d.text((40, photo_y + photo_h + 42), f"Valid: {expiry.strftime('%m/%d/%Y')}", fill=BLACK, font=get_font(11, True))
-    reg_no = f"REG/{country_code}/{random.randint(100000, 999999)}"
-    d.text((detail_x, photo_y + photo_h + 20), f"Reg No: {reg_no}", fill=BLACK, font=get_font(11, True))
-    card_no = f"CARD-{random.randint(1000, 9999)}-{random.randint(1000, 9999)}"
-    d.text((detail_x, photo_y + photo_h + 42), f"Card No: {card_no}", fill=BLACK, font=get_font(11, True))
-    holo_x, holo_y = width - 170, photo_y + photo_h - 20
-    d.ellipse([(holo_x, holo_y), (holo_x + 60, holo_y + 60)], fill=(232, 213, 128), outline=GOLD, width=2)
-    d.text((holo_x + 30, holo_y + 30), "VALID", fill=WHITE, font=get_font(10, True), anchor='mm')
+    logo = load_logo_image(logo_size, fallback_text=abbr or "TG")
+    logo_bg = Image.new('RGBA', (logo_size + 20, logo_size + 20), (255, 255, 255, 0))
+    logo_bg.paste(logo, (10, 10), logo)
+    img.paste(logo_bg, (26, 12), logo_bg)
+
+    d.text((170, 32), school_name.upper(), fill=BLUE, font=get_font(24, True))
+    d.text((170, 76), f"{cfg['flag']} {cfg['name']}", fill=DARK_GRAY, font=get_font(14))
+    d.text((width - 30, 34), "STUDENT ID", fill=WHITE, font=get_font(20, True), anchor='rt')
+
+    photo = download_real_photo(student_id).resize((220, 260), Image.Resampling.LANCZOS)
+    photo_x, photo_y = 40, 210
+    frame = [(photo_x - 6, photo_y - 6), (photo_x + 220 + 6, photo_y + 260 + 6)]
+    d.rounded_rectangle(frame, radius=20, fill=WHITE, outline=BLUE, width=3)
+    img.paste(photo, (photo_x, photo_y))
+
+    d.text((300, 200), student_name.upper(), fill=BLACK, font=get_font(30, True))
+    d.text((300, 240), program, fill=DARK_GRAY, font=get_font(15))
+    d.text((300, 268), f"Student ID: {student_id}", fill=BLUE, font=get_font(14, True))
+
+    issued = datetime.now()
+    expiry = issued + timedelta(days=365 * 4)
+    birthdate = fake.date_between(start_date='-27y', end_date='-18y')
+    phone = fake.phone_number()
+    address = fake.address().replace('\n', ', ')
+
+    left_x = 300
+    right_x = 620
+    base_y = 310
+    line_gap = 34
+
+    fields_left = [
+        ("Class", program.split()[0] if program else "Student"),
+        ("Phone", phone),
+        ("Issued", issued.strftime('%d %B %Y')),
+        ("DOB", birthdate.strftime('%d %B %Y')),
+    ]
+    for idx, (label, value) in enumerate(fields_left):
+        y = base_y + idx * line_gap
+        d.text((left_x, y), label, fill=DARK_GRAY, font=get_font(12, True))
+        d.text((left_x, y + 18), value, fill=BLACK, font=get_font(13))
+
+    fields_right = [
+        ("Student ID", student_id),
+        ("Address", address),
+        ("Valid Thru", expiry.strftime('%d %B %Y')),
+    ]
+    for idx, (label, value) in enumerate(fields_right):
+        y = base_y + idx * line_gap
+        d.text((right_x, y), label, fill=DARK_GRAY, font=get_font(12, True))
+        d.text((right_x, y + 18), value, fill=BLACK, font=get_font(13))
+
     try:
-        qr_img = generate_qr_code({'name': student_name, 'id': student_id, 'program': program}, {'name': school_name, 'id': ''}, country_code)
-        qr_size = 90
-        qr_resized = qr_img.resize((qr_size, qr_size), Image.Resampling.LANCZOS)
-        qr_x = width - qr_size - 25
-        qr_y = photo_y + photo_h - qr_size - 5
-        d.rectangle([(qr_x - 3, qr_y - 3), (qr_x + qr_size + 3, qr_y + qr_size + 3)], outline=BLUE, width=2, fill=WHITE)
-        img.paste(qr_resized, (qr_x, qr_y))
-        logger.info(f"✅ Student QR code embedded at ({qr_x}, {qr_y})")
+        qr_payload = {'name': student_name, 'id': student_id, 'program': program}
+        qr_img = generate_qr_code(qr_payload, {'name': school_name, 'id': student_id}, country_code)
+        qr_size = 110
+        qr = qr_img.resize((qr_size, qr_size), Image.Resampling.LANCZOS)
+        qr_x = width - qr_size - 40
+        qr_y = height - qr_size - 70
+        d.rounded_rectangle([(qr_x - 8, qr_y - 8), (qr_x + qr_size + 8, qr_y + qr_size + 8)], radius=16, fill=WHITE, outline=BLUE, width=2)
+        img.paste(qr, (qr_x, qr_y))
     except Exception as e:
         logger.error(f"❌ QR error: {e}")
-    y = height - 45
-    d.text((40, y), f"Official Student ID - {cfg['name']}", fill=BLUE, font=get_font(12, True))
-    d.text((40, y + 20), f"Generated: {today.strftime('%m/%d/%Y %H:%M:%S')} UTC", fill=BLUE, font=get_font(10))
-    d.text((width - 40, y + 8), "AUTHORIZED DOCUMENT", fill=BLUE, font=get_font(11, True), anchor='rt')
+
+    footer_y = height - 52
+    d.rectangle([(0, footer_y - 16), (width, height)], fill=BLUE)
+    d.text((30, footer_y), "Official Student Identification", fill=WHITE, font=get_font(12, True))
+    d.text((width - 30, footer_y), issued.strftime('%d %b %Y %H:%M UTC'), fill=WHITE, font=get_font(11), anchor='rt')
     return img
+
+
 
 # ============================================================
 # BOT HANDLERS WITH MEMORY & TAP-TO-COPY
@@ -894,7 +932,7 @@ def send_main_menu(context: CallbackContext, chat, uid: int, name: str):
     role = "🔴 SUPER ADMIN" if is_super_admin(uid) else "🟢 User"
     text = (
         f"✅ Welcome {name}\nRole: {role}\n\n"
-        f"🤖 100 COUNTRIES BOT\n📸 Real Photos + QR Codes\n🧠 Smart Memory\n📋 Tap-to-Copy Names\n\n"
+        f"🤖 {COUNTRY_COUNT} COUNTRIES BOT\n📸 Real Photos + QR Codes\n🧠 Smart Memory\n📋 Tap-to-Copy Names\n\n"
         f"📅 {now().strftime('%Y-%m-%d %H:%M:%S')}\n👤 Adeebaabkhan"
     )
 
@@ -983,6 +1021,30 @@ def add_super_admin_command(update: Update, context: CallbackContext):
             update.message.reply_text(f"✅ Added {label} as a super admin")
     else:
         update.message.reply_text("❌ Could not promote user. Check logs for details.")
+
+
+def list_countries_command(update: Update, context: CallbackContext):
+    uid = update.effective_user.id
+    if not is_authorized(uid):
+        update.message.reply_text("❌ ACCESS DENIED\n\nContact: @itsmeaab")
+        return
+
+    lines = [f"{code}: {cfg['flag']} {cfg['name']}" for code, cfg in sorted(COUNTRIES.items())]
+    header = f"🌍 {COUNTRY_COUNT} countries available:\n"
+    chunks = []
+    current = header
+    for line in lines:
+        if len(current) + len(line) + 1 > 3800:
+            chunks.append(current.rstrip())
+            current = line
+        else:
+            current += ("" if current.endswith("\n") else "\n") + line
+    if current:
+        chunks.append(current.rstrip())
+
+    for chunk in chunks:
+        update.message.reply_text(chunk)
+
 
 def add_user_inline_input(update: Update, context: CallbackContext):
     uid = update.effective_user.id
@@ -1503,6 +1565,7 @@ def main():
     dp.add_handler(conv)
     dp.add_handler(CommandHandler('adduser', add_user_command))
     dp.add_handler(CommandHandler('addsuper', add_super_admin_command))
+    dp.add_handler(CommandHandler('countries', list_countries_command))
     dp.add_error_handler(error_handler)
     
     logger.info("✅ BOT STARTED!")
