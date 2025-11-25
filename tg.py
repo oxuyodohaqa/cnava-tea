@@ -599,8 +599,18 @@ def create_photo_placeholder(student_id):
 
 def generate_qr_code(student_data, college_data, country_code):
     try:
-        qr_data = (f"TYPE:STUDENT_ID\nNAME:{student_data['name']}\nID:{student_data['id']}\nCOLLEGE:{college_data['name']}\nPROGRAM:{student_data['program']}\nCOUNTRY:{country_code}\nISSUED:{now().strftime('%Y-%m-%d')}\nVALID:{(now() + timedelta(days=1460)).strftime('%Y-%m-%d')}")
-        qr = qrcode.QRCode(version=2, error_correction=qrcode.constants.ERROR_CORRECT_H, box_size=4, border=2)
+        program = student_data.get('program') or student_data.get('role') or 'General Studies'
+        qr_data = (
+            f"TYPE:STUDENT_ID\n"
+            f"NAME:{student_data.get('name', 'N/A')}\n"
+            f"ID:{student_data.get('id', 'N/A')}\n"
+            f"COLLEGE:{college_data.get('name', 'N/A')}\n"
+            f"PROGRAM:{program}\n"
+            f"COUNTRY:{country_code}\n"
+            f"ISSUED:{now().strftime('%Y-%m-%d')}\n"
+            f"VALID:{(now() + timedelta(days=1460)).strftime('%Y-%m-%d')}"
+        )
+        qr = qrcode.QRCode(version=2, error_correction=qrcode.constants.ERROR_CORRECT_H, box_size=6, border=2)
         qr.add_data(qr_data)
         qr.make(fit=True)
         qr_img = qr.make_image(fill_color=BLUE, back_color=WHITE).convert("RGB")
@@ -652,7 +662,8 @@ def gen_salary_receipt_auto(school_name, teacher_name, teacher_id, profession, c
     img = Image.new('RGB', (width, height), WHITE)
     d = ImageDraw.Draw(img)
     today = datetime.now()
-    period_start = today - timedelta(days=30)
+    period_length = random.randint(14, 30)
+    period_start = today - timedelta(days=period_length)
     period_end = today
     base_salary = random.randint(*cfg['salary'])
     allowances = int(base_salary * random.uniform(0.05, 0.15))
@@ -803,7 +814,7 @@ def gen_teacher_id_auto(school_name, teacher_name, teacher_id, profession, count
         qr_payload = {'name': teacher_name, 'id': teacher_id, 'role': profession}
         qr_img = generate_qr_code(qr_payload, {'name': school_name, 'id': teacher_id}, country_code)
         qr_size = 110
-        qr = qr_img.resize((qr_size, qr_size), Image.Resampling.LANCZOS)
+        qr = qr_img.resize((qr_size, qr_size), Image.Resampling.NEAREST)
         qr_x = width - qr_size - 40
         qr_y = height - qr_size - 70
         d.rounded_rectangle([(qr_x - 8, qr_y - 8), (qr_x + qr_size + 8, qr_y + qr_size + 8)], radius=16, fill=WHITE, outline=BLUE, width=2)
@@ -892,7 +903,7 @@ def gen_student_id_auto(school_name, student_name, student_id, program, country_
         qr_payload = {'name': student_name, 'id': student_id, 'program': program}
         qr_img = generate_qr_code(qr_payload, {'name': school_name, 'id': student_id}, country_code)
         qr_size = 110
-        qr = qr_img.resize((qr_size, qr_size), Image.Resampling.LANCZOS)
+        qr = qr_img.resize((qr_size, qr_size), Image.Resampling.NEAREST)
         qr_x = width - qr_size - 40
         qr_y = height - qr_size - 70
         d.rounded_rectangle([(qr_x - 8, qr_y - 8), (qr_x + qr_size + 8, qr_y + qr_size + 8)], radius=16, fill=WHITE, outline=BLUE, width=2)
