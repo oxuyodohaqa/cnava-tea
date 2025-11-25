@@ -338,8 +338,15 @@ EXTRA_COUNTRIES = {
     'ZW2': {'name': 'Zimbabwe Midlands', 'flag': '🇿🇼', 'locale': 'en_US', 'symbol': '$', 'salary': (400, 1700), 'json': 'sheerid_zw2.json'},
 }
 
-COUNTRIES.update({k: v for k, v in EXTRA_COUNTRIES.items() if k not in COUNTRIES})
+EXPECTED_COUNTRY_COUNT = 223
+COUNTRIES = {**COUNTRIES, **{k: v for k, v in EXTRA_COUNTRIES.items() if k not in COUNTRIES}}
 COUNTRY_COUNT = len(COUNTRIES)
+
+if COUNTRY_COUNT != EXPECTED_COUNTRY_COUNT:
+    logger.warning(
+        f"🌍 Country catalog has {COUNTRY_COUNT} entries (expected {EXPECTED_COUNTRY_COUNT}); "
+        "verify EXTRA_COUNTRIES for missing or duplicate codes."
+    )
 
 def init_db():
     conn = sqlite3.connect('bot.db')
@@ -546,6 +553,15 @@ def get_font(size=14, bold=False):
     return ImageFont.load_default()
 
 
+def upscale_image(img, target_width=3840):
+    """Upscale images to the target width for sharper output (defaults to ~4K)."""
+    if img.width >= target_width:
+        return img
+    ratio = target_width / float(img.width)
+    new_size = (int(img.width * ratio), int(img.height * ratio))
+    return img.resize(new_size, Image.Resampling.LANCZOS)
+
+
 def load_logo_image(size=100, fallback_text="TG"):
     """Load a custom logo from LOGO_PATH or draw a branded fallback."""
     if LOGO_PATH and os.path.isfile(LOGO_PATH):
@@ -599,8 +615,18 @@ def create_photo_placeholder(student_id):
 
 def generate_qr_code(student_data, college_data, country_code):
     try:
-        qr_data = (f"TYPE:STUDENT_ID\nNAME:{student_data['name']}\nID:{student_data['id']}\nCOLLEGE:{college_data['name']}\nPROGRAM:{student_data['program']}\nCOUNTRY:{country_code}\nISSUED:{now().strftime('%Y-%m-%d')}\nVALID:{(now() + timedelta(days=1460)).strftime('%Y-%m-%d')}")
-        qr = qrcode.QRCode(version=2, error_correction=qrcode.constants.ERROR_CORRECT_H, box_size=4, border=2)
+        program = student_data.get('program') or student_data.get('role') or 'General Studies'
+        qr_data = (
+            f"TYPE:STUDENT_ID\n"
+            f"NAME:{student_data.get('name', 'N/A')}\n"
+            f"ID:{student_data.get('id', 'N/A')}\n"
+            f"COLLEGE:{college_data.get('name', 'N/A')}\n"
+            f"PROGRAM:{program}\n"
+            f"COUNTRY:{country_code}\n"
+            f"ISSUED:{now().strftime('%Y-%m-%d')}\n"
+            f"VALID:{(now() + timedelta(days=1460)).strftime('%Y-%m-%d')}"
+        )
+        qr = qrcode.QRCode(version=2, error_correction=qrcode.constants.ERROR_CORRECT_H, box_size=6, border=2)
         qr.add_data(qr_data)
         qr.make(fit=True)
         qr_img = qr.make_image(fill_color=BLUE, back_color=WHITE).convert("RGB")
@@ -652,7 +678,8 @@ def gen_salary_receipt_auto(school_name, teacher_name, teacher_id, profession, c
     img = Image.new('RGB', (width, height), WHITE)
     d = ImageDraw.Draw(img)
     today = datetime.now()
-    period_start = today - timedelta(days=30)
+    period_length = random.randint(14, 30)
+    period_start = today - timedelta(days=period_length)
     period_end = today
     base_salary = random.randint(*cfg['salary'])
     allowances = int(base_salary * random.uniform(0.05, 0.15))
@@ -727,7 +754,7 @@ def gen_salary_receipt_auto(school_name, teacher_name, teacher_id, profession, c
     footer_y = summary_y + 150
     d.text((40, footer_y), f"Issued: {today.strftime('%b %d, %Y %H:%M UTC')}", fill=DARK_GRAY, font=get_font(10))
     d.text((width - 40, footer_y), f"Country: {cfg['name']} | Authorized Document", fill=DARK_GRAY, font=get_font(10), anchor='rt')
-    return img
+    return upscale_image(img)
 
 
 # ============================================================
@@ -803,7 +830,7 @@ def gen_teacher_id_auto(school_name, teacher_name, teacher_id, profession, count
         qr_payload = {'name': teacher_name, 'id': teacher_id, 'role': profession}
         qr_img = generate_qr_code(qr_payload, {'name': school_name, 'id': teacher_id}, country_code)
         qr_size = 110
-        qr = qr_img.resize((qr_size, qr_size), Image.Resampling.LANCZOS)
+        qr = qr_img.resize((qr_size, qr_size), Image.Resampling.NEAREST)
         qr_x = width - qr_size - 40
         qr_y = height - qr_size - 70
         d.rounded_rectangle([(qr_x - 8, qr_y - 8), (qr_x + qr_size + 8, qr_y + qr_size + 8)], radius=16, fill=WHITE, outline=BLUE, width=2)
@@ -815,7 +842,7 @@ def gen_teacher_id_auto(school_name, teacher_name, teacher_id, profession, count
     d.rectangle([(0, footer_y - 16), (width, height)], fill=BLUE)
     d.text((30, footer_y), "Professional Faculty Identification", fill=WHITE, font=get_font(12, True))
     d.text((width - 30, footer_y), issued.strftime('%d %b %Y %H:%M UTC'), fill=WHITE, font=get_font(11), anchor='rt')
-    return img
+    return upscale_image(img)
 
 
 
@@ -892,7 +919,7 @@ def gen_student_id_auto(school_name, student_name, student_id, program, country_
         qr_payload = {'name': student_name, 'id': student_id, 'program': program}
         qr_img = generate_qr_code(qr_payload, {'name': school_name, 'id': student_id}, country_code)
         qr_size = 110
-        qr = qr_img.resize((qr_size, qr_size), Image.Resampling.LANCZOS)
+        qr = qr_img.resize((qr_size, qr_size), Image.Resampling.NEAREST)
         qr_x = width - qr_size - 40
         qr_y = height - qr_size - 70
         d.rounded_rectangle([(qr_x - 8, qr_y - 8), (qr_x + qr_size + 8, qr_y + qr_size + 8)], radius=16, fill=WHITE, outline=BLUE, width=2)
@@ -904,13 +931,24 @@ def gen_student_id_auto(school_name, student_name, student_id, program, country_
     d.rectangle([(0, footer_y - 16), (width, height)], fill=BLUE)
     d.text((30, footer_y), "Official Student Identification", fill=WHITE, font=get_font(12, True))
     d.text((width - 30, footer_y), issued.strftime('%d %b %Y %H:%M UTC'), fill=WHITE, font=get_font(11), anchor='rt')
-    return img
+    return upscale_image(img)
 
 
 
 # ============================================================
 # BOT HANDLERS WITH MEMORY & TAP-TO-COPY
 # ============================================================
+def quantity_keyboard():
+    choices = [5, 10, 20, 30]
+    rows = [
+        [InlineKeyboardButton(f"{choices[0]}", callback_data=f"qty_{choices[0]}")],
+        [InlineKeyboardButton(f"{choices[1]}", callback_data=f"qty_{choices[1]}")],
+        [InlineKeyboardButton(f"{choices[2]}", callback_data=f"qty_{choices[2]}")],
+        [InlineKeyboardButton(f"{choices[3]}", callback_data=f"qty_{choices[3]}")],
+        [InlineKeyboardButton("🔢 Custom 1-50", callback_data='qty_custom')],
+    ]
+    return InlineKeyboardMarkup(rows)
+
 def send_main_menu(context: CallbackContext, chat, uid: int, name: str):
     keyboard = []
 
@@ -1343,10 +1381,12 @@ def input_school_name(update: Update, context: CallbackContext):
         f"👤 `{teacher_name}`\n"
         f"🆔 `{teacher_id}`\n"
         f"👔 {profession}\n\n"
-        f"🔢 Quantity? (1-50)\n\n"
+        f"🔢 Quantity? (1-50)\n"
+        f"📌 Tap a button or type a number\n\n"
         f"💡 Tap names to copy\n"
         f"/cancel",
-        parse_mode='Markdown'
+        parse_mode='Markdown',
+        reply_markup=quantity_keyboard(),
     )
     return INPUT_QTY
 
@@ -1375,150 +1415,173 @@ def select_student_college(update: Update, context: CallbackContext):
         context.user_data['college_id'] = college['id']
         query.edit_message_text(
             f"✅ `{college['name']}`\n\n"
-            f"🔢 Quantity? (1-50)\n\n"
+            f"🔢 Quantity? (1-50)\n"
+            f"📌 Tap a button or type a number\n\n"
             f"📸 REAL PHOTOS\n"
             f"💡 Tap to copy\n"
             f"/cancel",
-            parse_mode='Markdown'
+            parse_mode='Markdown',
+            reply_markup=quantity_keyboard(),
         )
         return INPUT_QTY
+
+def process_quantity(qty: int, update: Update, context: CallbackContext):
+    if qty < 1 or qty > 50:
+        update.effective_message.reply_text("❌ Enter 1-50")
+        return INPUT_QTY
+
+    uid = update.effective_user.id
+    country_code = context.user_data['country']
+    school_name = context.user_data['school']
+    doc_type = context.user_data['doc_type']
+    cfg = COUNTRIES[country_code]
+    fake = Faker('en_US')
+    message = update.effective_message
+
+    # SAVE COUNTRY TO MEMORY
+    save_last_country(uid, country_code, doc_type)
+
+    progress_msg = message.reply_text(f"⏳ Generating {qty}...\n\n📸 Downloading photos...\n🔳 Creating QR codes...")
+
+    if doc_type == 'teacher':
+        teacher_data = context.user_data.get('teacher_data', {})
+        for i in range(qty):
+            try:
+                if i == 0:
+                    name = teacher_data['name']
+                    tid = teacher_data['id']
+                    profession = teacher_data['profession']
+                else:
+                    name = fake.name()
+                    tid = generate_random_teacher_id()
+                    profession = generate_random_profession()
+
+                id_img = gen_teacher_id_auto(school_name, name, tid, profession, country_code)
+                buf_id = BytesIO()
+                id_img.save(buf_id, format='PNG')
+                buf_id.seek(0)
+                buf_id.name = f"{tid}_ID.png"
+
+                # TAP-TO-COPY CAPTION
+                cap_id = (
+                    f"✅ TEACHER ID #{i+1}/{qty}\n\n"
+                    f"👤 `{name}`\n"
+                    f"🏫 `{school_name}`\n"
+                    f"🆔 `{tid}`\n"
+                    f"👔 {profession}\n"
+                    f"🌍 {cfg['flag']} {cfg['name']}\n\n"
+                    f"💡 Tap to copy\n"
+                    f"📅 {now().strftime('%Y-%m-%d %H:%M:%S')}"
+                )
+                message.reply_photo(photo=buf_id, caption=cap_id, parse_mode='Markdown')
+                buf_id.close()
+
+                sal_img = gen_salary_receipt_auto(school_name, name, tid, profession, country_code)
+                buf_sal = BytesIO()
+                sal_img.save(buf_sal, format='PNG')
+                buf_sal.seek(0)
+                buf_sal.name = f"{tid}_SALARY.png"
+
+                cap_sal = (
+                    f"💵 SALARY RECEIPT #{i+1}/{qty}\n\n"
+                    f"👤 `{name}`\n"
+                    f"🏫 `{school_name}`\n"
+                    f"🆔 `{tid}`\n"
+                    f"🌍 {cfg['flag']} {cfg['name']}"
+                )
+                message.reply_photo(photo=buf_sal, caption=cap_sal, parse_mode='Markdown')
+                buf_sal.close()
+
+                if (i + 1) % 5 == 0:
+                    try:
+                        progress_msg.edit_text(f"⏳ {i+1}/{qty} generated\n📸 Photos ready\n🔳 QR codes embedded")
+                    except:
+                        pass
+                if i < qty - 1:
+                    time.sleep(0.3)
+            except Exception as e:
+                logger.error(f"Error {i+1}: {e}")
+    else:
+        colleges = context.user_data.get('colleges', [])
+        for i in range(qty):
+            try:
+                college = random.choice(colleges)
+                student_name = fake.name()
+                student_id = generate_random_student_id()
+                program = generate_random_program()
+
+                id_img = gen_student_id_auto(college['name'], student_name, student_id, program, country_code)
+                buf_id = BytesIO()
+                id_img.save(buf_id, format='PNG')
+                buf_id.seek(0)
+                buf_id.name = f"{student_id}_ID.png"
+
+                # TAP-TO-COPY CAPTION
+                cap_id = (
+                    f"✅ STUDENT ID #{i+1}/{qty}\n\n"
+                    f"👤 `{student_name}`\n"
+                    f"🏫 `{college['name']}`\n"
+                    f"🆔 `{student_id}`\n"
+                    f"📚 {program}\n"
+                    f"🌍 {cfg['flag']} {cfg['name']}\n\n"
+                    f"📸 Real Photo: ✅\n"
+                    f"🔳 QR Code: ✅\n"
+                    f"💡 Tap to copy\n\n"
+                    f"📅 {now().strftime('%Y-%m-%d %H:%M:%S')}"
+                )
+                message.reply_photo(photo=buf_id, caption=cap_id, parse_mode='Markdown')
+                buf_id.close()
+
+                if (i + 1) % 5 == 0:
+                    try:
+                        progress_msg.edit_text(f"⏳ {i+1}/{qty} generated\n📸 Photos downloaded\n🔳 QR codes embedded")
+                    except:
+                        pass
+                if i < qty - 1:
+                    time.sleep(0.3)
+            except Exception as e:
+                logger.error(f"Error {i+1}: {e}")
+
+    try:
+        progress_msg.delete()
+    except:
+        pass
+
+    message.reply_text(
+        f"✅ DONE!\n\n"
+        f"📄 {qty} docs generated\n"
+        f"🌍 {cfg['flag']} {cfg['name']}\n"
+        f"📸 Real Photos: ✅\n"
+        f"🔳 QR Codes: ✅\n"
+        f"🧠 Country Saved!\n\n"
+        f"/start"
+    )
+    return ConversationHandler.END
+
 
 def input_quantity(update: Update, context: CallbackContext):
     try:
         qty = int(update.message.text.strip())
-        if qty < 1 or qty > 50:
-            update.message.reply_text("❌ Enter 1-50")
-            return INPUT_QTY
-        
-        uid = update.effective_user.id
-        country_code = context.user_data['country']
-        school_name = context.user_data['school']
-        doc_type = context.user_data['doc_type']
-        cfg = COUNTRIES[country_code]
-        fake = Faker('en_US')
-        
-        # SAVE COUNTRY TO MEMORY
-        save_last_country(uid, country_code, doc_type)
-        
-        progress_msg = update.message.reply_text(f"⏳ Generating {qty}...\n\n📸 Downloading photos...\n🔳 Creating QR codes...")
-        
-        if doc_type == 'teacher':
-            teacher_data = context.user_data.get('teacher_data', {})
-            for i in range(qty):
-                try:
-                    if i == 0:
-                        name = teacher_data['name']
-                        tid = teacher_data['id']
-                        profession = teacher_data['profession']
-                    else:
-                        name = fake.name()
-                        tid = generate_random_teacher_id()
-                        profession = generate_random_profession()
-                    
-                    id_img = gen_teacher_id_auto(school_name, name, tid, profession, country_code)
-                    buf_id = BytesIO()
-                    id_img.save(buf_id, format='JPEG', quality=95)
-                    buf_id.seek(0)
-                    buf_id.name = f"{tid}_ID.jpg"
-                    
-                    # TAP-TO-COPY CAPTION
-                    cap_id = (
-                        f"✅ TEACHER ID #{i+1}/{qty}\n\n"
-                        f"👤 `{name}`\n"
-                        f"🏫 `{school_name}`\n"
-                        f"🆔 `{tid}`\n"
-                        f"👔 {profession}\n"
-                        f"🌍 {cfg['flag']} {cfg['name']}\n\n"
-                        f"💡 Tap to copy\n"
-                        f"📅 {now().strftime('%Y-%m-%d %H:%M:%S')}"
-                    )
-                    update.message.reply_photo(photo=buf_id, caption=cap_id, parse_mode='Markdown')
-                    buf_id.close()
-                    
-                    sal_img = gen_salary_receipt_auto(school_name, name, tid, profession, country_code)
-                    buf_sal = BytesIO()
-                    sal_img.save(buf_sal, format='JPEG', quality=95)
-                    buf_sal.seek(0)
-                    buf_sal.name = f"{tid}_SALARY.jpg"
-                    
-                    cap_sal = (
-                        f"💵 SALARY RECEIPT #{i+1}/{qty}\n\n"
-                        f"👤 `{name}`\n"
-                        f"🏫 `{school_name}`\n"
-                        f"🆔 `{tid}`\n"
-                        f"🌍 {cfg['flag']} {cfg['name']}"
-                    )
-                    update.message.reply_photo(photo=buf_sal, caption=cap_sal, parse_mode='Markdown')
-                    buf_sal.close()
-                    
-                    if (i + 1) % 5 == 0:
-                        try:
-                            progress_msg.edit_text(f"⏳ {i+1}/{qty} generated\n📸 Photos ready\n🔳 QR codes embedded")
-                        except:
-                            pass
-                    if i < qty - 1:
-                        time.sleep(0.3)
-                except Exception as e:
-                    logger.error(f"Error {i+1}: {e}")
-        else:
-            colleges = context.user_data.get('colleges', [])
-            for i in range(qty):
-                try:
-                    college = random.choice(colleges)
-                    student_name = fake.name()
-                    student_id = generate_random_student_id()
-                    program = generate_random_program()
-                    
-                    id_img = gen_student_id_auto(college['name'], student_name, student_id, program, country_code)
-                    buf_id = BytesIO()
-                    id_img.save(buf_id, format='JPEG', quality=95)
-                    buf_id.seek(0)
-                    buf_id.name = f"{student_id}_ID.jpg"
-                    
-                    # TAP-TO-COPY CAPTION
-                    cap_id = (
-                        f"✅ STUDENT ID #{i+1}/{qty}\n\n"
-                        f"👤 `{student_name}`\n"
-                        f"🏫 `{college['name']}`\n"
-                        f"🆔 `{student_id}`\n"
-                        f"📚 {program}\n"
-                        f"🌍 {cfg['flag']} {cfg['name']}\n\n"
-                        f"📸 Real Photo: ✅\n"
-                        f"🔳 QR Code: ✅\n"
-                        f"💡 Tap to copy\n\n"
-                        f"📅 {now().strftime('%Y-%m-%d %H:%M:%S')}"
-                    )
-                    update.message.reply_photo(photo=buf_id, caption=cap_id, parse_mode='Markdown')
-                    buf_id.close()
-                    
-                    if (i + 1) % 5 == 0:
-                        try:
-                            progress_msg.edit_text(f"⏳ {i+1}/{qty} generated\n📸 Photos downloaded\n🔳 QR codes embedded")
-                        except:
-                            pass
-                    if i < qty - 1:
-                        time.sleep(0.3)
-                except Exception as e:
-                    logger.error(f"Error {i+1}: {e}")
-        
-        try:
-            progress_msg.delete()
-        except:
-            pass
-        
-        update.message.reply_text(
-            f"✅ DONE!\n\n"
-            f"📄 {qty} docs generated\n"
-            f"🌍 {cfg['flag']} {cfg['name']}\n"
-            f"📸 Real Photos: ✅\n"
-            f"🔳 QR Codes: ✅\n"
-            f"🧠 Country Saved!\n\n"
-            f"/start"
-        )
-        return ConversationHandler.END
+        return process_quantity(qty, update, context)
     except ValueError:
         update.message.reply_text("❌ Numbers only (1-50)\n\n/cancel")
         return INPUT_QTY
+
+
+def handle_quantity_callback(update: Update, context: CallbackContext):
+    query = update.callback_query
+    query.answer()
+    if query.data == 'qty_custom':
+        query.message.reply_text("✏️ Send a custom number between 1 and 50\n\n/cancel")
+        return INPUT_QTY
+    if query.data.startswith('qty_'):
+        try:
+            qty = int(query.data.replace('qty_', ''))
+            return process_quantity(qty, update, context)
+        except ValueError:
+            query.message.reply_text("❌ Invalid quantity\n\n/cancel")
+            return INPUT_QTY
+    return INPUT_QTY
 
 def cancel(update: Update, context: CallbackContext):
     update.message.reply_text("❌ Cancelled\n\n/start")
@@ -1550,7 +1613,11 @@ def main():
             SELECT_COUNTRY: [CallbackQueryHandler(select_country)],
             INPUT_SCHOOL: [MessageHandler(Filters.text & ~Filters.command, input_school_name), CommandHandler('cancel', cancel)],
             STUDENT_SELECT_COLLEGE: [CallbackQueryHandler(select_student_college)],
-            INPUT_QTY: [MessageHandler(Filters.text & ~Filters.command, input_quantity), CommandHandler('cancel', cancel)],
+            INPUT_QTY: [
+                CallbackQueryHandler(handle_quantity_callback),
+                MessageHandler(Filters.text & ~Filters.command, input_quantity),
+                CommandHandler('cancel', cancel)
+            ],
             ADD_USER_INPUT: [
                 CallbackQueryHandler(main_menu),
                 MessageHandler(Filters.text & ~Filters.command, add_user_inline_input),
