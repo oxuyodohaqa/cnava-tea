@@ -760,6 +760,8 @@ def gen_salary_receipt_auto(
     img = Image.new('RGB', (width, height), WHITE)
     d = ImageDraw.Draw(img)
     issued = issue_date or datetime.now()
+    if issued < datetime.now() - timedelta(days=365):
+        issued = datetime.now() - timedelta(days=random.randint(0, 330))
     period_length = random.randint(14, 30)
     period_start = issued - timedelta(days=period_length)
     period_end = issued
@@ -778,15 +780,16 @@ def gen_salary_receipt_auto(
     d.text((margin, margin - 6), school_name.upper(), fill=BLACK, font=get_font(24, True))
     d.text((margin, margin + 26), f"Payroll statement • {cfg['flag']} {cfg['name']}", fill=DARK_GRAY, font=get_font(12))
     d.text((width - margin, margin - 6), "PAYSLIP", fill=BLACK, font=get_font(20, True), anchor='rt')
-    d.text((width - margin, margin + 18), issued.strftime('%d %B %Y'), fill=DARK_GRAY, font=get_font(12), anchor='rt')
+    d.text((width - margin, margin + 18), f"Issued (last 12 months): {issued:%d %b %Y}", fill=DARK_GRAY, font=get_font(12), anchor='rt')
 
     header_y = margin + 60
     d.line([(margin, header_y), (width - margin, header_y)], fill=BORDER_GRAY, width=1)
 
     info_y = header_y + 18
-    d.text((margin, info_y), f"Employee: {teacher_name}", fill=BLACK, font=get_font(13))
-    d.text((margin, info_y + 24), f"Employee ID: {teacher_id}", fill=BLACK, font=get_font(13))
-    d.text((margin, info_y + 48), f"Role: {profession}", fill=BLACK, font=get_font(13))
+    d.text((margin, info_y), "Full name", fill=DARK_GRAY, font=get_font(11, True))
+    d.text((margin, info_y + 16), teacher_name, fill=BLACK, font=get_font(14, True))
+    d.text((margin, info_y + 40), "ID / Position", fill=DARK_GRAY, font=get_font(11, True))
+    d.text((margin, info_y + 56), f"{teacher_id} • {profession}", fill=BLACK, font=get_font(13))
     d.text((width - margin, info_y), f"Pay period: {period_start:%d %b %Y} - {period_end:%d %b %Y}", fill=BLACK, font=get_font(13), anchor='rt')
     d.text((width - margin, info_y + 24), f"Slip #: {random.randint(100000, 999999)}", fill=DARK_GRAY, font=get_font(12), anchor='rt')
     d.text((width - margin, info_y + 48), f"Status: PAID", fill=BLACK, font=get_font(12, True), anchor='rt')
@@ -794,7 +797,7 @@ def gen_salary_receipt_auto(
     section_top = info_y + 82
     d.line([(margin, section_top), (width - margin, section_top)], fill=BORDER_GRAY, width=1)
     d.text((margin, section_top + 10), "School", fill=DARK_GRAY, font=get_font(12, True))
-    d.text((margin, section_top + 28), school_name, fill=BLACK, font=get_font(13))
+    d.text((margin, section_top + 28), school_name, fill=BLACK, font=get_font(13, True))
     d.text((margin, section_top + 48), school_address, fill=BLACK, font=get_font(13))
     d.text((margin, section_top + 68), f"Contact: {school_contact}", fill=BLACK, font=get_font(13))
     d.text((margin, section_top + 88), f"Email: {school_email}", fill=BLACK, font=get_font(13))
@@ -894,21 +897,25 @@ def gen_teacher_id_auto(
     d.rectangle([(margin, margin), (width - margin, height - margin)], outline=BORDER_GRAY, width=2)
 
     issued = issue_date or datetime.now()
+    if issued < datetime.now() - timedelta(days=365):
+        issued = datetime.now() - timedelta(days=random.randint(0, 330))
     expiry = issued + timedelta(days=365 * 4)
 
     d.text((margin + 12, margin + 8), school_name.upper(), fill=BLACK, font=get_font(24, True))
     d.text((margin + 12, margin + 38), f"{cfg['flag']} {cfg['name']}", fill=DARK_GRAY, font=get_font(12))
     d.text((width - margin - 12, margin + 8), "FACULTY ID", fill=BLACK, font=get_font(18, True), anchor='rt')
-    d.text((width - margin - 12, margin + 30), "Official credential", fill=DARK_GRAY, font=get_font(11), anchor='rt')
+    d.text((width - margin - 12, margin + 30), f"Issued (last 12m): {issued:%d %b %Y}", fill=DARK_GRAY, font=get_font(11), anchor='rt')
 
     photo = download_real_photo(teacher_id).resize((210, 250), Image.Resampling.LANCZOS)
     photo_x, photo_y = margin + 12, margin + 70
     d.rectangle([(photo_x - 4, photo_y - 4), (photo_x + 210 + 4, photo_y + 250 + 4)], outline=BORDER_GRAY, width=2)
     img.paste(photo, (photo_x, photo_y))
 
-    d.text((photo_x, photo_y + 262), teacher_name.upper(), fill=BLACK, font=get_font(18, True))
-    d.text((photo_x, photo_y + 288), profession, fill=DARK_GRAY, font=get_font(13))
-    d.text((photo_x, photo_y + 312), f"Faculty ID: {teacher_id}", fill=BLUE, font=get_font(12, True))
+    d.text((photo_x, photo_y + 262), "Full Name", fill=DARK_GRAY, font=get_font(11, True))
+    d.text((photo_x, photo_y + 278), teacher_name.upper(), fill=BLACK, font=get_font(18, True))
+    d.text((photo_x, photo_y + 304), "Teaching Position", fill=DARK_GRAY, font=get_font(11, True))
+    d.text((photo_x, photo_y + 320), profession, fill=BLACK, font=get_font(13, True))
+    d.text((photo_x, photo_y + 342), f"Faculty ID: {teacher_id}", fill=BLUE, font=get_font(12, True))
 
     detail_x = photo_x + 250
     detail_y = photo_y
@@ -936,7 +943,8 @@ def gen_teacher_id_auto(
         d.text((width - margin - 230, y), label, fill=DARK_GRAY, font=get_font(11, True))
         d.text((width - margin - 230, y + 16), value, fill=BLACK, font=get_font(12))
 
-    auth_y = detail_y + line_gap * 6
+    info_block_bottom = photo_y + 370
+    auth_y = max(detail_y + line_gap * 6, info_block_bottom)
     d.line([(margin, auth_y), (width - margin, auth_y)], fill=BORDER_GRAY, width=1)
     d.text((margin + 12, auth_y + 12), f"Employment confirmed: {teacher_name} ({teacher_id})", fill=BLACK, font=get_font(12))
     d.text((margin + 12, auth_y + 32), f"Admin: {admin_name} • {admin_title}", fill=DARK_GRAY, font=get_font(11))
