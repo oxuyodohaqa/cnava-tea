@@ -610,7 +610,7 @@ class UnlimitedIDCardGenerator:
         }
 
     def create_simple_id_card(self, student_data):
-        """EXACTLY LIKE B.PY - College name AND Student name with white backgrounds"""
+        """Render a cleaner, more professional ID layout on the template."""
         college = student_data['college']
         college_name = college['name']
         college_id = college['id']
@@ -623,7 +623,7 @@ class UnlimitedIDCardGenerator:
             base = Image.open(self.template_path).convert("RGB")
         except FileNotFoundError:
             logger.warning("Template image %s not found, falling back to plain card", self.template_path)
-            base = Image.new("RGB", (800, 500), self.colors["white"])
+            base = Image.new("RGB", (1000, 620), self.colors["white"])
 
         width, height = base.size
         draw = ImageDraw.Draw(base)
@@ -631,89 +631,109 @@ class UnlimitedIDCardGenerator:
         try:
             if not os.path.exists(self.font_path):
                 raise FileNotFoundError(f"Font not found: {self.font_path}")
-            
-            # Load fonts
-            student_font = ImageFont.truetype(str(self.font_path), self.font_size)
-            college_font = ImageFont.truetype(str(self.font_path), self.college_font_size)
-            
-            # ===== DRAW COLLEGE NAME (TOP) =====
-            # ===== DRAW COLLEGE NAME ON TOP BAR (WITH WHITE BACKGROUND) =====
-            college_text = college_name  # from JSON
 
-            # Measure text size
-            college_text_bbox = draw.textbbox((0, 0), college_text, font=college_font)
+            # Load fonts for different sections
+            title_font = ImageFont.truetype(str(self.font_path), self.college_font_size + 6)
+            student_font = ImageFont.truetype(str(self.font_path), self.font_size + 8)
+            label_font = ImageFont.truetype(str(self.font_path), 24)
+            value_font = ImageFont.truetype(str(self.font_path), 30)
+            footer_font = ImageFont.truetype(str(self.font_path), 26)
+
+            # Header bar with college branding
+            header_height = 130
+            draw.rectangle([0, 0, width, header_height], fill=self.colors["dark_blue"])
+
+            college_text_bbox = draw.textbbox((0, 0), college_name, font=title_font)
             college_text_width = college_text_bbox[2] - college_text_bbox[0]
             college_text_height = college_text_bbox[3] - college_text_bbox[1]
-
-            # Positioning on the dark blue header
             college_x = (width - college_text_width) / 2
-            college_y = 26  # adjust if needed
+            college_y = (header_height - college_text_height) / 2 - 6
 
-            # Padding for white background box
-            pad_x = 40
-            pad_y = 20
+            draw.text((college_x, college_y), college_name, font=title_font, fill=self.colors["white"])
 
-            # Draw the white rectangle behind the text
-            draw.rectangle(
-                [
-                    college_x - pad_x,
-                    college_y - pad_y,
-                    college_x + college_text_width + pad_x,
-                    college_y + college_text_height + pad_y,
-                ],
-                fill="white",
-            )
+            id_label = f"Institution ID: {college_id}"
+            id_bbox = draw.textbbox((0, 0), id_label, font=footer_font)
+            id_width = id_bbox[2] - id_bbox[0]
+            draw.text((width - id_width - 30, header_height - id_bbox[3] - 15), id_label, font=footer_font, fill=self.colors["light_blue"])
 
-            # Draw the college name text (dark blue)
-            draw.text(
-                (college_x, college_y),
-                college_text,
-                font=college_font,
-                fill=self.text_color,   # dark blue text
-            )
+            # Content panel for student details
+            panel_padding = 40
+            panel_top = header_height + 20
+            panel_bottom = height - 90
+            draw.rounded_rectangle([
+                panel_padding,
+                panel_top,
+                width - panel_padding,
+                panel_bottom
+            ], radius=24, fill="#f8fafc")
 
-
-
-
-            # ===== DRAW STUDENT NAME (CENTER) =====
+            # Student name headline
             full_name = student_data["full_name"]
-            student_text_bbox = draw.textbbox((0, 0), full_name, font=student_font)
-            student_text_width = student_text_bbox[2] - student_text_bbox[0]
-            student_text_height = student_text_bbox[3] - student_text_bbox[1]
-            
-            student_x = self.center_x - (student_text_width / 2)
-            student_y = self.pos_y
+            name_bbox = draw.textbbox((0, 0), full_name, font=student_font)
+            name_height = name_bbox[3] - name_bbox[1]
+            name_x = panel_padding + 32
+            name_y = panel_top + 24
+            draw.text((name_x, name_y), full_name, font=student_font, fill=self.text_color)
 
-            # Add white background behind student name
-            draw.rectangle(
-                [student_x - self.bg_padding_x, student_y - self.bg_padding_y, 
-                 student_x + student_text_width + self.bg_padding_x, 
-                 student_y + student_text_height + self.bg_padding_y],
-                fill="white"
-            )
+            # Divider line under name
+            draw.line([(panel_padding + 24, name_y + name_height + 16), (width - panel_padding - 24, name_y + name_height + 16)],
+                      fill=self.colors["light_blue"], width=3)
 
-            # Write the student name
-            draw.text((student_x, student_y), full_name, font=student_font, fill=self.text_color)
+            info_start_y = name_y + name_height + 38
+            left_column_x = panel_padding + 32
+            right_column_x = width / 2 + 10
+            line_height = 52
+
+            left_fields = [
+                ("Student ID", student_id),
+                ("Registration", student_data['reg_number']),
+                ("Program", student_data['program']),
+                ("Academic Year", student_data['academic_year']),
+            ]
+
+            right_fields = [
+                ("Card Number", student_data['card_number']),
+                ("Issued", student_data['doc_date'].strftime('%Y-%m-%d')),
+                ("Expires", student_data['exp_date'].strftime('%Y-%m-%d')),
+                ("Country", student_data['country']),
+            ]
+
+            for idx, (label, value) in enumerate(left_fields):
+                y_pos = info_start_y + idx * line_height
+                draw.text((left_column_x, y_pos), label, font=label_font, fill=self.colors["gray"])
+                draw.text((left_column_x, y_pos + 22), value, font=value_font, fill=self.text_color)
+
+            for idx, (label, value) in enumerate(right_fields):
+                y_pos = info_start_y + idx * line_height
+                draw.text((right_column_x, y_pos), label, font=label_font, fill=self.colors["gray"])
+                draw.text((right_column_x, y_pos + 22), value, font=value_font, fill=self.text_color)
+
+            # Footer bar for quick verification info
+            footer_height = 70
+            draw.rectangle([0, height - footer_height, width, height], fill=self.colors["dark_blue"])
+            footer_text = f"Student ID {student_id}  •  Institution {college_id}  •  {student_data['country']}"
+            footer_bbox = draw.textbbox((0, 0), footer_text, font=footer_font)
+            footer_width = footer_bbox[2] - footer_bbox[0]
+            footer_x = (width - footer_width) / 2
+            footer_y = height - footer_height + (footer_height - (footer_bbox[3] - footer_bbox[1])) / 2 - 4
+            draw.text((footer_x, footer_y), footer_text, font=footer_font, fill=self.colors["white"])
 
         except Exception as e:
             logger.warning(f"Using fallback font due to: {e}")
-            # Fallback to basic font
             font = ImageFont.load_default()
-            
-            # Draw college name
-            college_text_bbox = draw.textbbox((0, 0), college_name, font=font)
-            college_text_width = college_text_bbox[2] - college_text_bbox[0]
-            college_x = (width - college_text_width) / 2
-            college_y = height * 0.2
-            draw.text((college_x, college_y), college_name, font=font, fill=self.text_color)
-            
-            # Draw student name
-            full_name = student_data["full_name"]
-            student_text_bbox = draw.textbbox((0, 0), full_name, font=font)
-            student_text_width = student_text_bbox[2] - student_text_bbox[0]
-            student_x = (width - student_text_width) / 2
-            student_y = height * 0.4
-            draw.text((student_x, student_y), full_name, font=font, fill=self.text_color)
+
+            header_height = 100
+            draw.rectangle([0, 0, width, header_height], fill=self.colors["dark_blue"])
+            draw.text((20, 30), college_name, font=font, fill=self.colors["white"])
+            draw.text((20, 55), f"Institution ID: {college_id}", font=font, fill=self.colors["light_blue"])
+
+            body_y = header_height + 20
+            draw.text((20, body_y), f"Name: {student_data['full_name']}", font=font, fill=self.text_color)
+            draw.text((20, body_y + 18), f"Student ID: {student_id}", font=font, fill=self.text_color)
+            draw.text((20, body_y + 36), f"Program: {student_data['program']}", font=font, fill=self.text_color)
+            draw.text((20, body_y + 54), f"Academic Year: {student_data['academic_year']}", font=font, fill=self.text_color)
+            draw.text((20, body_y + 72), f"Issued: {student_data['doc_date'].strftime('%Y-%m-%d')}", font=font, fill=self.text_color)
+            draw.text((20, body_y + 90), f"Expires: {student_data['exp_date'].strftime('%Y-%m-%d')}", font=font, fill=self.text_color)
 
         base.save(filepath, "PNG", quality=95, optimize=True)
         self.stats["ids_generated"] += 1
