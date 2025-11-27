@@ -1060,6 +1060,44 @@ def start(update: Update, context: CallbackContext):
 
     return send_main_menu(context, message, uid, name)
 
+
+def prompt_teacher_country(send_func, uid: int, context: CallbackContext):
+    last_country, last_doc_type = get_last_country(uid)
+    context.user_data['type'] = 'teacher'
+
+    if last_country and last_country in COUNTRIES and last_doc_type == 'teacher':
+        cfg = COUNTRIES[last_country]
+        keyboard = [
+            [InlineKeyboardButton("✅ YES", callback_data=f'use_last_tc_{last_country}')],
+            [InlineKeyboardButton("❌ NO", callback_data='choose_new_teacher')]
+        ]
+        send_func(
+            f"👨‍🏫 TEACHER DOCUMENTS\n\n"
+            f"Use {cfg['flag']} `{cfg['name']}` again?\n\n"
+            f"💡 Tap name to copy",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode='Markdown',
+        )
+    else:
+        keyboard = build_country_keyboard('tc_', 0)
+        send_func(
+            country_page_title('tc_', 0),
+            reply_markup=InlineKeyboardMarkup(keyboard),
+        )
+
+    return SELECT_COUNTRY
+
+
+def teacher_command(update: Update, context: CallbackContext):
+    uid = update.effective_user.id
+    message = update.effective_message
+
+    if not is_authorized(uid):
+        message.reply_text("❌ ACCESS DENIED\n\nContact: @itsmeaab")
+        return ConversationHandler.END
+
+    return prompt_teacher_country(message.reply_text, uid, context)
+
 def add_user_command(update: Update, context: CallbackContext):
     uid = update.effective_user.id
     if not is_super_admin(uid):
@@ -1250,30 +1288,7 @@ def main_menu(update: Update, context: CallbackContext):
         return ADD_USER_INPUT
 
     if query.data == 'teacher':
-        last_country, last_doc_type = get_last_country(uid)
-        if last_country and last_country in COUNTRIES and last_doc_type == 'teacher':
-            cfg = COUNTRIES[last_country]
-            keyboard = [
-                [InlineKeyboardButton("✅ YES", callback_data=f'use_last_tc_{last_country}')],
-                [InlineKeyboardButton("❌ NO", callback_data='choose_new_teacher')]
-            ]
-            query.edit_message_text(
-                f"👨‍🏫 TEACHER DOCUMENTS\n\n"
-                f"Use {cfg['flag']} `{cfg['name']}` again?\n\n"
-                f"💡 Tap name to copy",
-                reply_markup=InlineKeyboardMarkup(keyboard),
-                parse_mode='Markdown'
-            )
-            context.user_data['type'] = 'teacher'
-            return SELECT_COUNTRY
-        else:
-            keyboard = build_country_keyboard('tc_', 0)
-            query.edit_message_text(
-                country_page_title('tc_', 0),
-                reply_markup=InlineKeyboardMarkup(keyboard)
-            )
-            context.user_data['type'] = 'teacher'
-            return SELECT_COUNTRY
+        return prompt_teacher_country(query.edit_message_text, uid, context)
             
     elif query.data == 'student':
         last_country, last_doc_type = get_last_country(uid)
@@ -1449,6 +1464,20 @@ def input_school_name(update: Update, context: CallbackContext):
         f"👤 `{teacher_name}`\n"
         f"🆔 `{teacher_id}`\n"
         f"👔 {profession}\n\n"
+        f"📋 Fast approval checklist:\n"
+        f"- Clear, readable photo (no blur)\n"
+        f"- Full name that matches your Canva account\n"
+        f"- School/Institution name and logo or stamp\n"
+        f"- Your role visible (Teacher/Instructor/Educator/Staff)\n"
+        f"- Date or current-year status showing it is recent\n\n"
+        f"✅ Accepted documents:\n"
+        f"• Teacher ID card\n"
+        f"• Employment letter or contract\n"
+        f"• Pay stub (hide sensitive info)\n"
+        f"• Staff badge\n"
+        f"• School portal screenshot (name + position)\n"
+        f"• Accreditation/certificate proving school employment\n"
+        f"• Letter from school admin on letterhead\n\n"
         f"🔢 Quantity? (1-50)\n"
         f"📌 Tap a button or type a number\n\n"
         f"💡 Tap names to copy\n"
@@ -1555,7 +1584,9 @@ def process_quantity(qty: int, update: Update, context: CallbackContext):
                     f"👤 `{name}`\n"
                     f"🏫 `{school_name}`\n"
                     f"🆔 `{tid}`\n"
-                    f"🌍 {cfg['flag']} {cfg['name']}"
+                    f"👔 {profession}\n"
+                    f"🌍 {cfg['flag']} {cfg['name']}\n"
+                    f"📅 {now().strftime('%Y-%m-%d')} (current)"
                 )
                 message.reply_photo(photo=buf_sal, caption=cap_sal, parse_mode='Markdown')
                 buf_sal.close()
@@ -1674,7 +1705,7 @@ def main():
     dp = updater.dispatcher
 
     conv = ConversationHandler(
-        entry_points=[CommandHandler('start', start)],
+        entry_points=[CommandHandler('start', start), CommandHandler('teacher', teacher_command)],
         states={
             MAIN_MENU: [CallbackQueryHandler(main_menu)],
             SELECT_DOC: [CallbackQueryHandler(main_menu)],
