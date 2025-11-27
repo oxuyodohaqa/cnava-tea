@@ -1018,36 +1018,9 @@ def gen_teacher_id_auto(
 def gen_student_id_auto(school_name, student_name, student_id, program, country_code='IN'):
     cfg = COUNTRIES.get(country_code, COUNTRIES['IN'])
     fake = Faker(cfg['locale'])
-    width, height = 1000, 640
+    width, height = 1000, 660
     img = Image.new('RGB', (width, height), WHITE)
     d = ImageDraw.Draw(img)
-
-    backdrop = (247, 248, 250)
-    d.rectangle([(0, 0), (width, height)], fill=backdrop)
-    d.rectangle([(0, 0), (width, 160)], fill=WHITE)
-    d.polygon([(width - 280, 0), (width, 0), (width, 220)], fill=BLUE)
-    d.rectangle([(0, 140), (width, 170)], fill=GOLD)
-
-    logo_size = 120
-    abbr = ''.join([w[0] for w in school_name.split()[:3]]).upper()[:3]
-    logo = load_logo_image(logo_size, fallback_text=abbr or "TG")
-    logo_bg = Image.new('RGBA', (logo_size + 20, logo_size + 20), (255, 255, 255, 0))
-    logo_bg.paste(logo, (10, 10), logo)
-    img.paste(logo_bg, (26, 12), logo_bg)
-
-    d.text((170, 32), school_name.upper(), fill=BLUE, font=get_font(24, True))
-    d.text((170, 76), f"{cfg['flag']} {cfg['name']}", fill=DARK_GRAY, font=get_font(14))
-    d.text((width - 30, 34), "STUDENT ID", fill=WHITE, font=get_font(20, True), anchor='rt')
-
-    photo = download_real_photo(student_id).resize((220, 260), Image.Resampling.LANCZOS)
-    photo_x, photo_y = 40, 210
-    frame = [(photo_x - 6, photo_y - 6), (photo_x + 220 + 6, photo_y + 260 + 6)]
-    d.rounded_rectangle(frame, radius=20, fill=WHITE, outline=BLUE, width=3)
-    img.paste(photo, (photo_x, photo_y))
-
-    d.text((300, 200), student_name.upper(), fill=BLACK, font=get_font(30, True))
-    d.text((300, 240), program, fill=DARK_GRAY, font=get_font(15))
-    d.text((300, 268), f"Student ID: {student_id}", fill=BLUE, font=get_font(14, True))
 
     issued = datetime.now()
     expiry = issued + timedelta(days=365 * 4)
@@ -1055,50 +1028,97 @@ def gen_student_id_auto(school_name, student_name, student_id, program, country_
     phone = fake.phone_number()
     address = fake.address().replace('\n', ', ')
 
-    left_x = 300
-    right_x = 620
-    base_y = 310
-    line_gap = 34
+    program_label = program or "General Studies"
+    abbr = ''.join([w[0] for w in school_name.split()[:3]]).upper()[:3]
 
+    # Header
+    header_h = 170
+    d.rectangle([(0, 0), (width, height)], fill=LIGHT_GRAY)
+    d.rectangle([(0, 0), (width, header_h)], fill=NAVY_BLUE)
+    d.rectangle([(0, header_h - 22), (width, header_h)], fill=GOLD)
+
+    logo_size = 110
+    logo = load_logo_image(logo_size, fallback_text=abbr or "TG")
+    logo_bg = Image.new('RGBA', (logo_size + 16, logo_size + 16), (0, 0, 0, 0))
+    logo_bg.paste(logo, (8, 8), logo)
+    img.paste(logo_bg, (30, 26), logo_bg)
+
+    d.text((170, 40), school_name.upper(), fill=WHITE, font=get_font(26, True))
+    d.text((170, 82), f"{cfg['flag']} {cfg['name']} • Academic Affairs", fill=WHITE, font=get_font(14))
+    d.text((width - 36, 40), "STUDENT ID", fill=WHITE, font=get_font(22, True), anchor='rt')
+    d.text((width - 36, 78), program_label, fill=WHITE, font=get_font(13), anchor='rt')
+
+    # Card body
+    body_top = header_h + 16
+    card_height = 430
+    d.rounded_rectangle([(24, body_top), (width - 24, body_top + card_height)], radius=18, fill=WHITE, outline=BORDER_GRAY, width=2)
+
+    photo = download_real_photo(student_id).resize((230, 270), Image.Resampling.LANCZOS)
+    photo_x, photo_y = 48, body_top + 36
+    frame = [(photo_x - 10, photo_y - 10), (photo_x + 230 + 10, photo_y + 270 + 10)]
+    d.rounded_rectangle(frame, radius=18, fill=LIGHT_GRAY, outline=BLUE, width=3)
+    img.paste(photo, (photo_x, photo_y))
+
+    # Identity block
+    name_y = photo_y - 6
+    d.text((320, name_y), student_name.upper(), fill=BLACK, font=get_font(30, True))
+    d.text((320, name_y + 34), program_label, fill=DARK_GRAY, font=get_font(16))
+    d.text((320, name_y + 62), f"Student ID: {student_id}", fill=BLUE, font=get_font(14, True))
+    d.text((320, name_y + 88), "Official Enrollment Credential", fill=GREEN, font=get_font(12, True))
+
+    # Details panel
+    info_top = name_y + 126
+    d.rounded_rectangle([(300, info_top - 10), (width - 46, info_top + 210)], radius=14, fill=LIGHT_GRAY, outline=BORDER_GRAY, width=1)
+
+    left_x = 320
+    right_x = 620
+    line_gap = 40
     fields_left = [
-        ("Class", program.split()[0] if program else "Student"),
+        ("Program", program_label),
         ("Phone", phone),
-        ("Issued", issued.strftime('%d %B %Y')),
         ("DOB", birthdate.strftime('%d %B %Y')),
     ]
     for idx, (label, value) in enumerate(fields_left):
-        y = base_y + idx * line_gap
+        y = info_top + idx * line_gap
         d.text((left_x, y), label, fill=DARK_GRAY, font=get_font(12, True))
         d.text((left_x, y + 18), value, fill=BLACK, font=get_font(13))
 
     fields_right = [
         ("Student ID", student_id),
         ("Address", address),
-        ("Valid Thru", expiry.strftime('%d %B %Y')),
+        ("Issued / Valid", f"{issued.strftime('%d %b %Y')} → {expiry.strftime('%d %b %Y')}")
     ]
     for idx, (label, value) in enumerate(fields_right):
-        y = base_y + idx * line_gap
+        y = info_top + idx * line_gap
         d.text((right_x, y), label, fill=DARK_GRAY, font=get_font(12, True))
         d.text((right_x, y + 18), value, fill=BLACK, font=get_font(13))
 
+    # QR + authenticity
+    qr_block_top = info_top + 200
+    qr_note = f"Issued: {issued.strftime('%d %b %Y %H:%M UTC')}"
+    d.text((320, qr_block_top + 12), "Status: Enrolled • Verified", fill=GREEN, font=get_font(12, True))
+    d.text((320, qr_block_top + 36), qr_note, fill=DARK_GRAY, font=get_font(11))
+    d.text((320, qr_block_top + 56), f"Registrar: {school_name}", fill=DARK_GRAY, font=get_font(11))
+
     try:
-        qr_payload = {'name': student_name, 'id': student_id, 'program': program}
+        qr_payload = {'name': student_name, 'id': student_id, 'program': program_label}
         qr_img = generate_qr_code(qr_payload, {'name': school_name, 'id': student_id}, country_code)
-        qr_size = 110
+        qr_size = 120
         qr = qr_img.resize((qr_size, qr_size), Image.Resampling.NEAREST)
-        qr_x = width - qr_size - 40
-        qr_y = height - qr_size - 70
-        d.rounded_rectangle([(qr_x - 8, qr_y - 8), (qr_x + qr_size + 8, qr_y + qr_size + 8)], radius=16, fill=WHITE, outline=BLUE, width=2)
+        qr_x = width - qr_size - 70
+        qr_y = qr_block_top
+        d.rounded_rectangle([(qr_x - 10, qr_y - 10), (qr_x + qr_size + 10, qr_y + qr_size + 10)], radius=16, fill=WHITE, outline=BLUE, width=2)
         img.paste(qr, (qr_x, qr_y))
     except Exception as e:
         logger.error(f"❌ QR error: {e}")
 
-    footer_y = height - 52
-    d.rectangle([(0, footer_y - 16), (width, height)], fill=BLUE)
-    d.text((30, footer_y), "Official Student Identification", fill=WHITE, font=get_font(12, True))
-    d.text((width - 30, footer_y), issued.strftime('%d %b %Y %H:%M UTC'), fill=WHITE, font=get_font(11), anchor='rt')
+    # Footer
+    footer_y = height - 70
+    d.rectangle([(0, footer_y), (width, height)], fill=NAVY_BLUE)
+    d.text((30, footer_y + 18), "Official Student Identification", fill=WHITE, font=get_font(12, True))
+    d.text((width - 30, footer_y + 18), f"Valid {issued.strftime('%Y')} - {expiry.strftime('%Y')}", fill=WHITE, font=get_font(11), anchor='rt')
+    d.text((30, footer_y + 42), "Contact registrar for verification", fill=WHITE, font=get_font(11))
     return upscale_image(img)
-
 
 
 # ============================================================
