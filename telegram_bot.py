@@ -46,7 +46,7 @@ http = requests.Session()
 http.mount("https://", HTTPAdapter(max_retries=retry_strategy))
 http.mount("http://", HTTPAdapter(max_retries=retry_strategy))
 
-BOT_TOKEN = os.getenv("BOT_TOKEN", "8233094350:AAEiVBsJ2RtLjlDfQ45ef1wCmRTwWtyNwMk")
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 SUPER_ADMIN_ID = 7680006005
 ADMIN_IDS = {SUPER_ADMIN_ID}
 extra_admins = os.getenv("ADMIN_IDS", "").split(",") if os.getenv("ADMIN_IDS") else []
