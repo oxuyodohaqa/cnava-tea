@@ -439,7 +439,7 @@ def init_db():
 
 init_db()
 
-MAIN_MENU, SELECT_DOC, SELECT_COUNTRY, INPUT_SCHOOL, INPUT_QTY, STUDENT_SELECT_COLLEGE, ADD_USER_INPUT = range(7)
+MAIN_MENU, SELECT_DOC, SELECT_COUNTRY, INPUT_SCHOOL, INPUT_TEACHER_DETAILS, INPUT_QTY, STUDENT_SELECT_COLLEGE, ADD_USER_INPUT = range(8)
 
 def now():
     return datetime.now(timezone.utc)
@@ -753,12 +753,15 @@ def gen_salary_receipt_auto(school_name, teacher_name, teacher_id, profession, c
     insurance = random.randint(100, 300)
     net_salary = base_salary + allowances + bonus + overtime - tax - deductions - insurance
 
-    d.rectangle([(0, 0), (width, 170)], fill=BLUE)
-    d.rectangle([(0, 140), (width, 170)], fill=GOLD)
-    d.text((34, 30), school_name.upper(), fill=WHITE, font=get_font(24, True))
-    d.text((34, 74), f"{cfg['flag']} {cfg['name']}", fill=WHITE, font=get_font(14))
-    d.text((width - 34, 34), "PAYSLIP", fill=WHITE, font=get_font(22, True), anchor='rt')
-    d.text((width - 34, 72), today.strftime('%B %d, %Y'), fill=WHITE, font=get_font(13), anchor='rt')
+    letterhead_h = 160
+    d.rectangle([(0, 0), (width, letterhead_h)], fill=WHITE)
+    d.rectangle([(0, letterhead_h - 36), (width, letterhead_h)], fill=GOLD)
+    d.text((40, 30), school_name.upper(), fill=BLUE, font=get_font(26, True))
+    d.text((40, 72), f"{cfg['flag']} {cfg['name']} • Official Payroll Division", fill=DARK_GRAY, font=get_font(14))
+    d.text((40, 104), "Salary Statement (Confidential)", fill=BLACK, font=get_font(16, True))
+    d.text((width - 40, 36), today.strftime('%d %B %Y'), fill=BLACK, font=get_font(13), anchor='rt')
+    d.text((width - 40, 68), "PAYSLIP", fill=BLUE, font=get_font(22, True), anchor='rt')
+    d.text((width - 40, 104), "Authorized Copy", fill=DARK_GRAY, font=get_font(12), anchor='rt')
 
     d.rounded_rectangle([(24, 190), (width - 24, 290)], radius=14, outline=BORDER_GRAY, width=2, fill=LIGHT_GRAY)
     d.text((44, 212), teacher_name.upper(), fill=BLACK, font=get_font(17, True))
@@ -797,7 +800,7 @@ def gen_salary_receipt_auto(school_name, teacher_name, teacher_id, profession, c
         line_y += 28
 
     summary_y = start_y + box_height + 16
-    d.rounded_rectangle([(24, summary_y), (width - 24, summary_y + 120)], radius=16, outline=GREEN, width=3, fill=LIGHT_GRAY)
+    d.rounded_rectangle([(24, summary_y), (width - 24, summary_y + 136)], radius=16, outline=GREEN, width=3, fill=LIGHT_GRAY)
     d.rectangle([(24, summary_y), (width - 24, summary_y + 36)], fill=GREEN)
     d.text((40, summary_y + 10), "PAYMENT CONFIRMED", fill=WHITE, font=get_font(14, True))
     gross = base_salary + allowances + bonus + overtime
@@ -813,10 +816,24 @@ def gen_salary_receipt_auto(school_name, teacher_name, teacher_id, profession, c
     d.text((40, summary_y + 86), f"Transaction ID: {txn_id}", fill=DARK_GRAY, font=get_font(11))
     d.text((330, summary_y + 86), f"Bank Reference: {bank_ref}", fill=DARK_GRAY, font=get_font(11))
     d.text((640, summary_y + 86), "Mode: Direct Deposit", fill=DARK_GRAY, font=get_font(11))
+    d.text((40, summary_y + 112), "Certified by Payroll Office", fill=GREEN, font=get_font(11, True))
+    d.text((330, summary_y + 112), "Signed & Stamped", fill=DARK_GRAY, font=get_font(11))
 
-    footer_y = summary_y + 150
+    footer_y = summary_y + 168
     d.text((40, footer_y), f"Issued: {today.strftime('%b %d, %Y %H:%M UTC')}", fill=DARK_GRAY, font=get_font(10))
     d.text((width - 40, footer_y), f"Country: {cfg['name']} | Authorized Document", fill=DARK_GRAY, font=get_font(10), anchor='rt')
+
+    seal_r = 46
+    seal_center = (width - 120, footer_y - 12)
+    d.ellipse([
+        (seal_center[0] - seal_r, seal_center[1] - seal_r),
+        (seal_center[0] + seal_r, seal_center[1] + seal_r)
+    ], outline=RED, width=4)
+    d.text((seal_center[0], seal_center[1]), "PAYROLL\nSTAMP", fill=RED, font=get_font(10, True), anchor='mm', align='center')
+
+    sig_y = footer_y - 24
+    d.line([(40, sig_y), (260, sig_y)], fill=DARK_GRAY, width=2)
+    d.text((150, sig_y - 18), "Authorized Signatory", fill=DARK_GRAY, font=get_font(10), anchor='mm')
     return upscale_image(img)
 
 
@@ -835,6 +852,7 @@ def gen_teacher_id_auto(school_name, teacher_name, teacher_id, profession, count
     d.rectangle([(0, 0), (width, 160)], fill=WHITE)
     d.polygon([(width - 280, 0), (width, 0), (width, 220)], fill=BLUE)
     d.rectangle([(0, 140), (width, 170)], fill=GOLD)
+    d.rectangle([(0, height - 80), (width, height)], fill=LIGHT_GRAY)
 
     logo_size = 120
     abbr = ''.join([w[0] for w in school_name.split()[:3]]).upper()[:3]
@@ -846,6 +864,7 @@ def gen_teacher_id_auto(school_name, teacher_name, teacher_id, profession, count
     d.text((170, 32), school_name.upper(), fill=BLUE, font=get_font(24, True))
     d.text((170, 76), f"{cfg['flag']} {cfg['name']}", fill=DARK_GRAY, font=get_font(14))
     d.text((width - 30, 34), "TEACHER ID", fill=WHITE, font=get_font(20, True), anchor='rt')
+    d.text((width - 30, 72), "Faculty Credential", fill=WHITE, font=get_font(12), anchor='rt')
 
     photo = download_real_photo(teacher_id).resize((220, 260), Image.Resampling.LANCZOS)
     photo_x, photo_y = 40, 210
@@ -856,6 +875,7 @@ def gen_teacher_id_auto(school_name, teacher_name, teacher_id, profession, count
     d.text((300, 200), teacher_name.upper(), fill=BLACK, font=get_font(30, True))
     d.text((300, 240), profession, fill=DARK_GRAY, font=get_font(15))
     d.text((300, 268), f"Teacher ID: {teacher_id}", fill=BLUE, font=get_font(14, True))
+    d.text((300, 296), "Official Staff Credential", fill=GREEN, font=get_font(12, True))
 
     issued = datetime.now()
     expiry = issued + timedelta(days=365 * 4)
@@ -865,7 +885,7 @@ def gen_teacher_id_auto(school_name, teacher_name, teacher_id, profession, count
 
     left_x = 300
     right_x = 620
-    base_y = 310
+    base_y = 320
     line_gap = 34
 
     fields_left = [
@@ -883,11 +903,21 @@ def gen_teacher_id_auto(school_name, teacher_name, teacher_id, profession, count
         ("Teacher ID", teacher_id),
         ("Address", address),
         ("Valid Thru", expiry.strftime('%d %B %Y')),
+        ("Status", "Active Faculty"),
     ]
     for idx, (label, value) in enumerate(fields_right):
         y = base_y + idx * line_gap
         d.text((right_x, y), label, fill=DARK_GRAY, font=get_font(12, True))
         d.text((right_x, y + 18), value, fill=BLACK, font=get_font(13))
+
+    stamp_r = 60
+    stamp_center = (width - 170, base_y + 40)
+    d.ellipse([
+        (stamp_center[0] - stamp_r, stamp_center[1] - stamp_r),
+        (stamp_center[0] + stamp_r, stamp_center[1] + stamp_r)
+    ], outline=RED, width=4)
+    d.text((stamp_center[0], stamp_center[1] - 6), "OFFICIAL", fill=RED, font=get_font(11, True), anchor='mm')
+    d.text((stamp_center[0], stamp_center[1] + 10), "SCHOOL SEAL", fill=RED, font=get_font(10, True), anchor='mm')
 
     try:
         qr_payload = {'name': teacher_name, 'id': teacher_id, 'role': profession}
@@ -901,10 +931,18 @@ def gen_teacher_id_auto(school_name, teacher_name, teacher_id, profession, count
     except Exception as e:
         logger.error(f"❌ QR error: {e}")
 
+    sig_y = height - 132
+    d.line([(300, sig_y), (520, sig_y)], fill=DARK_GRAY, width=2)
+    d.text((410, sig_y - 24), "Authorized Signature", fill=DARK_GRAY, font=get_font(11), anchor='mm')
+    d.text((410, sig_y + 10), "Registrar / Principal", fill=DARK_GRAY, font=get_font(10), anchor='mm')
+
+    barcode_text = f"AC-{teacher_id}-{issued.strftime('%y%m')}"
+    d.text((width - 40, sig_y + 16), barcode_text, fill=DARK_GRAY, font=get_font(11), anchor='rt')
+
     footer_y = height - 52
     d.rectangle([(0, footer_y - 16), (width, height)], fill=BLUE)
     d.text((30, footer_y), "Professional Faculty Identification", fill=WHITE, font=get_font(12, True))
-    d.text((width - 30, footer_y), issued.strftime('%d %b %Y %H:%M UTC'), fill=WHITE, font=get_font(11), anchor='rt')
+    d.text((width - 30, footer_y), f"Valid {issued.strftime('%Y')} - {expiry.strftime('%Y')}", fill=WHITE, font=get_font(11), anchor='rt')
     return upscale_image(img)
 
 
@@ -1059,6 +1097,44 @@ def start(update: Update, context: CallbackContext):
         return ConversationHandler.END
 
     return send_main_menu(context, message, uid, name)
+
+
+def prompt_teacher_country(send_func, uid: int, context: CallbackContext):
+    last_country, last_doc_type = get_last_country(uid)
+    context.user_data['type'] = 'teacher'
+
+    if last_country and last_country in COUNTRIES and last_doc_type == 'teacher':
+        cfg = COUNTRIES[last_country]
+        keyboard = [
+            [InlineKeyboardButton("✅ YES", callback_data=f'use_last_tc_{last_country}')],
+            [InlineKeyboardButton("❌ NO", callback_data='choose_new_teacher')]
+        ]
+        send_func(
+            f"👨‍🏫 TEACHER DOCUMENTS\n\n"
+            f"Use {cfg['flag']} `{cfg['name']}` again?\n\n"
+            f"💡 Tap name to copy",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode='Markdown',
+        )
+    else:
+        keyboard = build_country_keyboard('tc_', 0)
+        send_func(
+            country_page_title('tc_', 0),
+            reply_markup=InlineKeyboardMarkup(keyboard),
+        )
+
+    return SELECT_COUNTRY
+
+
+def teacher_command(update: Update, context: CallbackContext):
+    uid = update.effective_user.id
+    message = update.effective_message
+
+    if not is_authorized(uid):
+        message.reply_text("❌ ACCESS DENIED\n\nContact: @itsmeaab")
+        return ConversationHandler.END
+
+    return prompt_teacher_country(message.reply_text, uid, context)
 
 def add_user_command(update: Update, context: CallbackContext):
     uid = update.effective_user.id
@@ -1250,30 +1326,7 @@ def main_menu(update: Update, context: CallbackContext):
         return ADD_USER_INPUT
 
     if query.data == 'teacher':
-        last_country, last_doc_type = get_last_country(uid)
-        if last_country and last_country in COUNTRIES and last_doc_type == 'teacher':
-            cfg = COUNTRIES[last_country]
-            keyboard = [
-                [InlineKeyboardButton("✅ YES", callback_data=f'use_last_tc_{last_country}')],
-                [InlineKeyboardButton("❌ NO", callback_data='choose_new_teacher')]
-            ]
-            query.edit_message_text(
-                f"👨‍🏫 TEACHER DOCUMENTS\n\n"
-                f"Use {cfg['flag']} `{cfg['name']}` again?\n\n"
-                f"💡 Tap name to copy",
-                reply_markup=InlineKeyboardMarkup(keyboard),
-                parse_mode='Markdown'
-            )
-            context.user_data['type'] = 'teacher'
-            return SELECT_COUNTRY
-        else:
-            keyboard = build_country_keyboard('tc_', 0)
-            query.edit_message_text(
-                country_page_title('tc_', 0),
-                reply_markup=InlineKeyboardMarkup(keyboard)
-            )
-            context.user_data['type'] = 'teacher'
-            return SELECT_COUNTRY
+        return prompt_teacher_country(query.edit_message_text, uid, context)
             
     elif query.data == 'student':
         last_country, last_doc_type = get_last_country(uid)
@@ -1437,21 +1490,63 @@ def input_school_name(update: Update, context: CallbackContext):
     context.user_data['school'] = school_name
     country_code = context.user_data['country']
     cfg = COUNTRIES[country_code]
-    fake = Faker('en_US')
-    teacher_name = fake.name()
-    teacher_id = generate_random_teacher_id()
-    profession = generate_random_profession()
-    context.user_data['teacher_data'] = {'name': teacher_name, 'id': teacher_id, 'profession': profession}
-    
-    # TAP-TO-COPY FORMAT
+    profile_name = (update.effective_user.full_name or '').strip()
+    suggested_name = profile_name if len(profile_name) > 2 else Faker('en_US').name()
+
+    context.user_data['teacher_data'] = {
+        'name': suggested_name,
+        'id': generate_random_teacher_id(),
+        'profession': 'Teacher',
+    }
+
     update.message.reply_text(
         f"✅ School: `{school_name}`\n\n"
+        f"✏️ Send your full name and role so they match Canva approval:\n"
+        f"`{suggested_name} | Teacher`\n\n"
+        f"💡 Format: Full Name | Role (Teacher/Instructor/Faculty)\n"
+        f"📄 PDFs only for clarity; blurry or mismatched names get rejected.\n\n"
+        f"/cancel",
+        parse_mode='Markdown'
+    )
+    return INPUT_TEACHER_DETAILS
+
+def input_teacher_details(update: Update, context: CallbackContext):
+    text = update.message.text.strip()
+    base = context.user_data.get('teacher_data', {})
+    current_name = base.get('name') or (update.effective_user.full_name or '').strip()
+    if not current_name or len(current_name) < 3:
+        current_name = Faker('en_US').name()
+
+    if '|' in text:
+        name_part, role_part = text.split('|', 1)
+        teacher_name = name_part.strip() or current_name
+        profession = role_part.strip() or 'Teacher'
+    else:
+        teacher_name = text if len(text) > 2 else current_name
+        profession = 'Teacher'
+
+    teacher_id = base.get('id') or generate_random_teacher_id()
+    context.user_data['teacher_data'] = {'name': teacher_name, 'id': teacher_id, 'profession': profession}
+
+    school_name = context.user_data['school']
+    cfg = COUNTRIES[context.user_data['country']]
+
+    update.message.reply_text(
+        f"✅ School: `{school_name}`\n"
         f"👤 `{teacher_name}`\n"
+        f"👔 {profession}\n"
         f"🆔 `{teacher_id}`\n"
-        f"👔 {profession}\n\n"
+        f"🌍 {cfg['flag']} {cfg['name']}\n\n"
+        f"📋 Fast approval checklist (PDF uploads recommended):\n"
+        f"- Clear, readable photo (no blur)\n"
+        f"- Full name exactly as your Canva account\n"
+        f"- School name/logo or stamp\n"
+        f"- Role shown (Teacher/Instructor/Educator/Staff)\n"
+        f"- Current-year date if possible\n\n"
+        f"✅ Use a real school document (not generated): ID card, employment letter/contract, staff badge, portal screenshot,\n"
+        f"   accreditation/certificate, letter from admin; pay stub only if sensitive info is hidden.\n\n"
         f"🔢 Quantity? (1-50)\n"
         f"📌 Tap a button or type a number\n\n"
-        f"💡 Tap names to copy\n"
         f"/cancel",
         parse_mode='Markdown',
         reply_markup=quantity_keyboard(),
@@ -1515,20 +1610,15 @@ def process_quantity(qty: int, update: Update, context: CallbackContext):
         teacher_data = context.user_data.get('teacher_data', {})
         for i in range(qty):
             try:
-                if i == 0:
-                    name = teacher_data['name']
-                    tid = teacher_data['id']
-                    profession = teacher_data['profession']
-                else:
-                    name = fake.name()
-                    tid = generate_random_teacher_id()
-                    profession = generate_random_profession()
+                name = teacher_data.get('name') or fake.name()
+                tid = teacher_data.get('id') or generate_random_teacher_id()
+                profession = teacher_data.get('profession') or 'Teacher'
 
                 id_img = gen_teacher_id_auto(school_name, name, tid, profession, country_code)
                 buf_id = BytesIO()
-                id_img.save(buf_id, format='PNG')
+                id_img.convert("RGB").save(buf_id, format='PDF')
                 buf_id.seek(0)
-                buf_id.name = f"{tid}_ID.png"
+                buf_id.name = f"{tid}_ID.pdf"
 
                 # TAP-TO-COPY CAPTION
                 cap_id = (
@@ -1539,25 +1629,29 @@ def process_quantity(qty: int, update: Update, context: CallbackContext):
                     f"👔 {profession}\n"
                     f"🌍 {cfg['flag']} {cfg['name']}\n\n"
                     f"💡 Tap to copy\n"
-                    f"📅 {now().strftime('%Y-%m-%d %H:%M:%S')}"
+                    f"📅 {now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+                    f"🗂️ High-res PDF with seal + signature line"
                 )
-                message.reply_photo(photo=buf_id, caption=cap_id, parse_mode='Markdown')
+                message.reply_document(document=buf_id, caption=cap_id, parse_mode='Markdown')
                 buf_id.close()
 
                 sal_img = gen_salary_receipt_auto(school_name, name, tid, profession, country_code)
                 buf_sal = BytesIO()
-                sal_img.save(buf_sal, format='PNG')
+                sal_img.convert("RGB").save(buf_sal, format='PDF')
                 buf_sal.seek(0)
-                buf_sal.name = f"{tid}_SALARY.png"
+                buf_sal.name = f"{tid}_SALARY.pdf"
 
                 cap_sal = (
                     f"💵 SALARY RECEIPT #{i+1}/{qty}\n\n"
                     f"👤 `{name}`\n"
                     f"🏫 `{school_name}`\n"
                     f"🆔 `{tid}`\n"
-                    f"🌍 {cfg['flag']} {cfg['name']}"
+                    f"👔 {profession}\n"
+                    f"🌍 {cfg['flag']} {cfg['name']}\n"
+                    f"📅 {now().strftime('%Y-%m-%d')} (current)\n"
+                    f"🗂️ Letterhead PDF with payroll stamp + signature"
                 )
-                message.reply_photo(photo=buf_sal, caption=cap_sal, parse_mode='Markdown')
+                message.reply_document(document=buf_sal, caption=cap_sal, parse_mode='Markdown')
                 buf_sal.close()
 
                 if (i + 1) % 5 == 0:
@@ -1615,15 +1709,33 @@ def process_quantity(qty: int, update: Update, context: CallbackContext):
     except:
         pass
 
-    message.reply_text(
-        f"✅ DONE!\n\n"
-        f"📄 {qty} docs generated\n"
-        f"🌍 {cfg['flag']} {cfg['name']}\n"
-        f"📸 Real Photos: ✅\n"
-        f"🔳 QR Codes: ✅\n"
-        f"🧠 Country Saved!\n\n"
-        f"/start"
-    )
+    if doc_type == 'teacher':
+        message.reply_text(
+            f"✅ DONE!\n\n"
+            f"📄 {qty} docs generated\n"
+            f"🌍 {cfg['flag']} {cfg['name']}\n"
+            f"📸 Real Photos: ✅\n"
+            f"🔳 QR Codes: ✅\n"
+            f"🗂️ Exported as clear PDF files with letterhead, seal, and signature lines\n"
+            f"🧠 Country Saved!\n\n"
+            f"📋 For Canva approval, upload a REAL school document showing:\n"
+            f"• Your full name matching your account\n"
+            f"• School name/logo\n"
+            f"• Your role (Teacher/Instructor/Educator/Staff)\n"
+            f"• Recent date/status if possible\n\n"
+            f"👍 Acceptable: ID card, employment letter/contract, staff badge, portal screenshot, accreditation/certificate, letter from admin; pay stub only if you hide sensitive info.\n\n"
+            f"/start"
+        )
+    else:
+        message.reply_text(
+            f"✅ DONE!\n\n"
+            f"📄 {qty} docs generated\n"
+            f"🌍 {cfg['flag']} {cfg['name']}\n"
+            f"📸 Real Photos: ✅\n"
+            f"🔳 QR Codes: ✅\n"
+            f"🧠 Country Saved!\n\n"
+            f"/start"
+        )
     return ConversationHandler.END
 
 
@@ -1674,12 +1786,13 @@ def main():
     dp = updater.dispatcher
 
     conv = ConversationHandler(
-        entry_points=[CommandHandler('start', start)],
+        entry_points=[CommandHandler('start', start), CommandHandler('teacher', teacher_command)],
         states={
             MAIN_MENU: [CallbackQueryHandler(main_menu)],
             SELECT_DOC: [CallbackQueryHandler(main_menu)],
             SELECT_COUNTRY: [CallbackQueryHandler(select_country)],
             INPUT_SCHOOL: [MessageHandler(Filters.text & ~Filters.command, input_school_name), CommandHandler('cancel', cancel)],
+            INPUT_TEACHER_DETAILS: [MessageHandler(Filters.text & ~Filters.command, input_teacher_details), CommandHandler('cancel', cancel)],
             STUDENT_SELECT_COLLEGE: [CallbackQueryHandler(select_student_college)],
             INPUT_QTY: [
                 CallbackQueryHandler(handle_quantity_callback),
