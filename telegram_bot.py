@@ -1711,11 +1711,17 @@ def process_quantity(qty: int, update: Update, context: CallbackContext):
     progress_msg = message.reply_text(f"⏳ Generating {qty}...\n\n📸 Downloading photos...\n🔳 Creating QR codes...")
 
     if doc_type == 'teacher':
-        teacher_data = context.user_data.get('teacher_data', {})
+        base_teacher = context.user_data.get('teacher_data', {})
+        used_teacher_names = set()
+        used_teacher_ids = set()
         for i in range(qty):
             try:
-                name = teacher_data.get('name') or fake.name()
-                tid = teacher_data.get('id') or generate_random_teacher_id()
+                teacher_data = base_teacher.copy()
+
+                name = teacher_data.get('name') if qty == 1 else None
+                tid = teacher_data.get('id') if qty == 1 else None
+                name = name or fake.name()
+                tid = tid or generate_random_teacher_id()
                 profession = teacher_data.get('profession') or 'Teacher'
                 start_date = teacher_data.get('start_date') or fake.date_between(start_date='-6y', end_date='-1y').strftime('%d %b %Y')
                 academic_year = teacher_data.get('academic_year') or f"{datetime.now().year}-{datetime.now().year + 1}"
@@ -1727,6 +1733,26 @@ def process_quantity(qty: int, update: Update, context: CallbackContext):
                 school_contact = teacher_data.get('school_contact') or fake.phone_number()
                 school_email = teacher_data.get('school_email') or fake.company_email()
                 school_website = teacher_data.get('school_website') or f"https://www.{fake.domain_name()}"
+
+                if qty > 1:
+                    attempts = 0
+                    while name.lower() in used_teacher_names:
+                        if attempts > 12:
+                            name = f"{fake.first_name()} {fake.last_name()} {random.choice(['Jr.', 'Sr.', 'II', 'III'])}"
+                            break
+                        name = fake.name()
+                        attempts += 1
+
+                    attempts = 0
+                    while tid in used_teacher_ids:
+                        if attempts > 12:
+                            tid = f"{tid}-{random.randint(100, 999)}"
+                            break
+                        tid = generate_random_teacher_id()
+                        attempts += 1
+
+                used_teacher_names.add(name.lower())
+                used_teacher_ids.add(tid)
 
                 id_img = gen_teacher_id_auto(
                     school_name,
