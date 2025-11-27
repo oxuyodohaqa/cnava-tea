@@ -735,10 +735,28 @@ def load_colleges(code):
 # ============================================================
 # SALARY RECEIPT GENERATION
 # ============================================================
-def gen_salary_receipt_auto(school_name, teacher_name, teacher_id, profession, country_code='IN'):
+def gen_salary_receipt_auto(
+    school_name,
+    teacher_name,
+    teacher_id,
+    profession,
+    school_address,
+    school_contact,
+    school_email,
+    admin_name,
+    admin_title,
+    start_date,
+    subject,
+    employment_type,
+    academic_year,
+    school_website,
+    country_code='IN'
+):
     cfg = COUNTRIES.get(country_code, COUNTRIES['IN'])
-    width, height = 900, 800
-    img = Image.new('RGB', (width, height), WHITE)
+    fake = Faker(cfg['locale'])
+    width, height = 1000, 880
+    canvas_color = (245, 248, 252)
+    img = Image.new('RGB', (width, height), canvas_color)
     d = ImageDraw.Draw(img)
     today = datetime.now()
     period_length = random.randint(14, 30)
@@ -753,28 +771,40 @@ def gen_salary_receipt_auto(school_name, teacher_name, teacher_id, profession, c
     insurance = random.randint(100, 300)
     net_salary = base_salary + allowances + bonus + overtime - tax - deductions - insurance
 
-    letterhead_h = 160
-    d.rectangle([(0, 0), (width, letterhead_h)], fill=WHITE)
-    d.rectangle([(0, letterhead_h - 36), (width, letterhead_h)], fill=GOLD)
-    d.text((40, 30), school_name.upper(), fill=BLUE, font=get_font(26, True))
-    d.text((40, 72), f"{cfg['flag']} {cfg['name']} • Official Payroll Division", fill=DARK_GRAY, font=get_font(14))
-    d.text((40, 104), "Salary Statement (Confidential)", fill=BLACK, font=get_font(16, True))
-    d.text((width - 40, 36), today.strftime('%d %B %Y'), fill=BLACK, font=get_font(13), anchor='rt')
-    d.text((width - 40, 68), "PAYSLIP", fill=BLUE, font=get_font(22, True), anchor='rt')
-    d.text((width - 40, 104), "Authorized Copy", fill=DARK_GRAY, font=get_font(12), anchor='rt')
+    header_h = 180
+    d.rectangle([(0, 0), (width, header_h)], fill=BLUE)
+    d.rectangle([(0, header_h - 22), (width, header_h)], fill=GOLD)
+    d.text((48, 34), school_name.upper(), fill=WHITE, font=get_font(28, True))
+    d.text((48, 78), f"{cfg['flag']} {cfg['name']} | Payroll & HR", fill=WHITE, font=get_font(14))
+    d.text((width - 48, 40), "PAYSLIP", fill=WHITE, font=get_font(26, True), anchor='rt')
+    d.text((width - 48, 82), today.strftime('%d %B %Y'), fill=WHITE, font=get_font(14), anchor='rt')
+    d.text((width - 48, 122), "CONFIDENTIAL EMPLOYEE COPY", fill=WHITE, font=get_font(12), anchor='rt')
 
-    d.rounded_rectangle([(24, 190), (width - 24, 290)], radius=14, outline=BORDER_GRAY, width=2, fill=LIGHT_GRAY)
-    d.text((44, 212), teacher_name.upper(), fill=BLACK, font=get_font(17, True))
-    d.text((44, 244), f"ID: {teacher_id}", fill=DARK_GRAY, font=get_font(12))
-    d.text((300, 212), f"Position: {profession}", fill=DARK_GRAY, font=get_font(12))
-    d.text((300, 244), f"Pay Period: {period_start.strftime('%b %d')} - {period_end.strftime('%b %d, %Y')}", fill=DARK_GRAY, font=get_font(12))
-    d.text((width - 44, 212), "Status: Paid", fill=GREEN, font=get_font(13, True), anchor='rt')
+    card_top = header_h + 18
+    d.rounded_rectangle([(28, card_top), (width - 28, card_top + 140)], radius=16, fill=WHITE, outline=BORDER_GRAY, width=2)
+    d.text((48, card_top + 18), teacher_name.upper(), fill=BLACK, font=get_font(20, True))
+    d.text((48, card_top + 54), f"Employee ID: {teacher_id}", fill=DARK_GRAY, font=get_font(12))
+    d.text((48, card_top + 82), f"Role: {profession}", fill=DARK_GRAY, font=get_font(12))
+    d.text((width - 48, card_top + 18), f"Pay Period: {period_start.strftime('%d %b')} - {period_end.strftime('%d %b %Y')}", fill=BLUE, font=get_font(13, True), anchor='rt')
+    d.text((width - 48, card_top + 50), "Status: PAID", fill=GREEN, font=get_font(13, True), anchor='rt')
+    d.text((width - 48, card_top + 82), f"Slip #: {random.randint(100000, 999999)}", fill=DARK_GRAY, font=get_font(11), anchor='rt')
 
-    start_y = 320
-    box_height = 300
-    d.rounded_rectangle([(24, start_y), (width - 24, start_y + box_height)], radius=20, outline=BORDER_GRAY, width=2, fill=WHITE)
-    d.text((44, start_y + 18), "EARNINGS", fill=DARK_GRAY, font=get_font(14, True))
-    d.text((width // 2 + 16, start_y + 18), "DEDUCTIONS", fill=DARK_GRAY, font=get_font(14, True))
+    detail_top = card_top + 170
+    detail_height = 130
+    d.rounded_rectangle([(28, detail_top), (width - 28, detail_top + detail_height)], radius=16, outline=BORDER_GRAY, width=2, fill=WHITE)
+    d.text((48, detail_top + 14), "EMPLOYMENT DETAILS", fill=BLUE, font=get_font(15, True))
+    d.text((48, detail_top + 40), f"School: {school_name}", fill=BLACK, font=get_font(12))
+    d.text((48, detail_top + 62), f"Address: {school_address}", fill=BLACK, font=get_font(12))
+    d.text((48, detail_top + 84), f"Contact: {school_contact} | {school_email}", fill=BLACK, font=get_font(12))
+    d.text((width - 48, detail_top + 40), f"Website: {school_website}", fill=DARK_GRAY, font=get_font(12), anchor='rt')
+    d.text((width - 48, detail_top + 62), f"Employment: {employment_type}", fill=DARK_GRAY, font=get_font(12), anchor='rt')
+    d.text((width - 48, detail_top + 84), f"Academic Year: {academic_year}", fill=DARK_GRAY, font=get_font(12), anchor='rt')
+
+    start_y = detail_top + detail_height + 14
+    box_height = 280
+    d.rounded_rectangle([(28, start_y), (width - 28, start_y + box_height)], radius=20, outline=BORDER_GRAY, width=2, fill=WHITE)
+    d.text((48, start_y + 18), "EARNINGS", fill=BLUE, font=get_font(15, True))
+    d.text((width // 2 + 24, start_y + 18), "DEDUCTIONS", fill=RED, font=get_font(15, True))
 
     line_y = start_y + 55
     earnings = [
@@ -784,8 +814,8 @@ def gen_salary_receipt_auto(school_name, teacher_name, teacher_id, profession, c
         ("Overtime", overtime),
     ]
     for label, amount in earnings:
-        d.text((44, line_y), label, fill=BLACK, font=get_font(12))
-        d.text((width // 2 - 34, line_y), f"{cfg['symbol']}{amount:,}", fill=GREEN, font=get_font(12, True), anchor='rt')
+        d.text((48, line_y), label, fill=BLACK, font=get_font(12))
+        d.text((width // 2 - 28, line_y), f"{cfg['symbol']}{amount:,}", fill=GREEN, font=get_font(12, True), anchor='rt')
         line_y += 28
 
     line_y = start_y + 55
@@ -795,104 +825,128 @@ def gen_salary_receipt_auto(school_name, teacher_name, teacher_id, profession, c
         ("Health Insurance", insurance),
     ]
     for label, amount in deductions_list:
-        d.text((width // 2 + 16, line_y), label, fill=BLACK, font=get_font(12))
-        d.text((width - 44, line_y), f"-{cfg['symbol']}{amount:,}", fill=RED, font=get_font(12, True), anchor='rt')
+        d.text((width // 2 + 24, line_y), label, fill=BLACK, font=get_font(12))
+        d.text((width - 48, line_y), f"-{cfg['symbol']}{amount:,}", fill=RED, font=get_font(12, True), anchor='rt')
         line_y += 28
 
-    summary_y = start_y + box_height + 16
-    d.rounded_rectangle([(24, summary_y), (width - 24, summary_y + 136)], radius=16, outline=GREEN, width=3, fill=LIGHT_GRAY)
-    d.rectangle([(24, summary_y), (width - 24, summary_y + 36)], fill=GREEN)
-    d.text((40, summary_y + 10), "PAYMENT CONFIRMED", fill=WHITE, font=get_font(14, True))
+    summary_y = start_y + box_height + 20
+    d.rounded_rectangle([(28, summary_y), (width - 28, summary_y + 160)], radius=18, outline=BLUE, width=3, fill=WHITE)
+    d.rectangle([(28, summary_y), (width - 28, summary_y + 44)], fill=BLUE)
+    d.text((48, summary_y + 12), "PAYMENT CONFIRMED", fill=WHITE, font=get_font(14, True))
     gross = base_salary + allowances + bonus + overtime
     total_deductions = tax + deductions + insurance
-    d.text((40, summary_y + 54), f"Gross Earnings", fill=BLACK, font=get_font(12))
-    d.text((260, summary_y + 54), f"{cfg['symbol']}{gross:,}", fill=BLACK, font=get_font(12, True), anchor='rt')
-    d.text((330, summary_y + 54), "Total Deductions", fill=BLACK, font=get_font(12))
-    d.text((560, summary_y + 54), f"-{cfg['symbol']}{total_deductions:,}", fill=RED, font=get_font(12, True), anchor='rt')
-    d.text((640, summary_y + 54), "Net Salary", fill=BLACK, font=get_font(13, True))
-    d.text((width - 34, summary_y + 54), f"{cfg['symbol']}{net_salary:,}", fill=BLUE, font=get_font(14, True), anchor='rt')
+    d.text((48, summary_y + 64), f"Gross Earnings", fill=BLACK, font=get_font(12))
+    d.text((280, summary_y + 64), f"{cfg['symbol']}{gross:,}", fill=BLACK, font=get_font(12, True), anchor='rt')
+    d.text((360, summary_y + 64), "Total Deductions", fill=BLACK, font=get_font(12))
+    d.text((610, summary_y + 64), f"-{cfg['symbol']}{total_deductions:,}", fill=RED, font=get_font(12, True), anchor='rt')
+    d.text((700, summary_y + 64), "Net Salary", fill=BLACK, font=get_font(13, True))
+    d.text((width - 40, summary_y + 64), f"{cfg['symbol']}{net_salary:,}", fill=BLUE, font=get_font(16, True), anchor='rt')
     txn_id = f"TXN{random.randint(1000000, 9999999)}"
     bank_ref = f"REF{random.randint(100000, 999999)}"
-    d.text((40, summary_y + 86), f"Transaction ID: {txn_id}", fill=DARK_GRAY, font=get_font(11))
-    d.text((330, summary_y + 86), f"Bank Reference: {bank_ref}", fill=DARK_GRAY, font=get_font(11))
-    d.text((640, summary_y + 86), "Mode: Direct Deposit", fill=DARK_GRAY, font=get_font(11))
-    d.text((40, summary_y + 112), "Certified by Payroll Office", fill=GREEN, font=get_font(11, True))
-    d.text((330, summary_y + 112), "Signed & Stamped", fill=DARK_GRAY, font=get_font(11))
+    d.text((48, summary_y + 100), f"Transaction ID: {txn_id}", fill=DARK_GRAY, font=get_font(11))
+    d.text((360, summary_y + 100), f"Bank Reference: {bank_ref}", fill=DARK_GRAY, font=get_font(11))
+    d.text((48, summary_y + 128), f"Account: {fake.iban()} • {fake.bank_country()}", fill=DARK_GRAY, font=get_font(11))
+    d.text((360, summary_y + 128), "Authorized & sealed", fill=DARK_GRAY, font=get_font(11))
 
-    footer_y = summary_y + 168
-    d.text((40, footer_y), f"Issued: {today.strftime('%b %d, %Y %H:%M UTC')}", fill=DARK_GRAY, font=get_font(10))
-    d.text((width - 40, footer_y), f"Country: {cfg['name']} | Authorized Document", fill=DARK_GRAY, font=get_font(10), anchor='rt')
+    confirm_top = summary_y + 180
+    d.rounded_rectangle([(28, confirm_top), (width - 28, confirm_top + 120)], radius=16, outline=BORDER_GRAY, width=2, fill=WHITE)
+    d.text((48, confirm_top + 14), "EMPLOYMENT CONFIRMATION", fill=BLUE, font=get_font(14, True))
+    d.text((48, confirm_top + 38), f"Currently employed as {profession} (ID: {teacher_id})", fill=BLACK, font=get_font(12))
+    d.text((48, confirm_top + 60), f"Subjects: {subject} | Start: {start_date}", fill=BLACK, font=get_font(12))
+    d.text((48, confirm_top + 82), f"AY: {academic_year} | Type: {employment_type}", fill=BLACK, font=get_font(12))
+    d.text((width - 48, confirm_top + 38), f"Administrator: {admin_name}", fill=DARK_GRAY, font=get_font(12), anchor='rt')
+    d.text((width - 48, confirm_top + 60), f"Title: {admin_title}", fill=DARK_GRAY, font=get_font(12), anchor='rt')
+    d.text((width - 48, confirm_top + 82), f"Issued: {today.strftime('%b %d, %Y')}", fill=DARK_GRAY, font=get_font(12), anchor='rt')
 
-    seal_r = 46
-    seal_center = (width - 120, footer_y - 12)
+    footer_y = confirm_top + 150
+    d.text((48, footer_y), f"Contact: {school_contact} | {school_email}", fill=DARK_GRAY, font=get_font(10))
+    d.text((width - 48, footer_y), f"{school_address}", fill=DARK_GRAY, font=get_font(10), anchor='rt')
+
+    seal_r = 50
+    seal_center = (width - 150, footer_y - 20)
     d.ellipse([
         (seal_center[0] - seal_r, seal_center[1] - seal_r),
         (seal_center[0] + seal_r, seal_center[1] + seal_r)
-    ], outline=RED, width=4)
-    d.text((seal_center[0], seal_center[1]), "PAYROLL\nSTAMP", fill=RED, font=get_font(10, True), anchor='mm', align='center')
+    ], outline=BLUE, width=4)
+    d.text((seal_center[0], seal_center[1] - 6), "OFFICIAL", fill=BLUE, font=get_font(10, True), anchor='mm')
+    d.text((seal_center[0], seal_center[1] + 10), "PAYROLL SEAL", fill=BLUE, font=get_font(10, True), anchor='mm')
 
-    sig_y = footer_y - 24
-    d.line([(40, sig_y), (260, sig_y)], fill=DARK_GRAY, width=2)
-    d.text((150, sig_y - 18), "Authorized Signatory", fill=DARK_GRAY, font=get_font(10), anchor='mm')
+    sig_y = footer_y - 18
+    d.line([(48, sig_y), (280, sig_y)], fill=DARK_GRAY, width=2)
+    d.text((164, sig_y - 20), admin_name, fill=DARK_GRAY, font=get_font(10, True), anchor='mm')
+    d.text((164, sig_y + 14), admin_title, fill=DARK_GRAY, font=get_font(10), anchor='mm')
     return upscale_image(img)
 
 
 # ============================================================
 # TEACHER ID CARD GENERATION
 # ============================================================
-def gen_teacher_id_auto(school_name, teacher_name, teacher_id, profession, country_code='IN'):
+def gen_teacher_id_auto(
+    school_name,
+    teacher_name,
+    teacher_id,
+    profession,
+    school_address,
+    school_contact,
+    school_email,
+    admin_name,
+    admin_title,
+    start_date,
+    subject,
+    employment_type,
+    academic_year,
+    school_website,
+    country_code='IN'
+):
     cfg = COUNTRIES.get(country_code, COUNTRIES['IN'])
     fake = Faker(cfg['locale'])
     width, height = 1000, 640
     img = Image.new('RGB', (width, height), WHITE)
     d = ImageDraw.Draw(img)
 
-    backdrop = (247, 248, 250)
+    backdrop = (243, 246, 251)
     d.rectangle([(0, 0), (width, height)], fill=backdrop)
-    d.rectangle([(0, 0), (width, 160)], fill=WHITE)
-    d.polygon([(width - 280, 0), (width, 0), (width, 220)], fill=BLUE)
-    d.rectangle([(0, 140), (width, 170)], fill=GOLD)
-    d.rectangle([(0, height - 80), (width, height)], fill=LIGHT_GRAY)
+    d.rectangle([(0, 0), (width, 180)], fill=BLUE)
+    d.rectangle([(0, 180), (width, 214)], fill=GOLD)
+    d.rectangle([(0, 214), (width, height)], fill=WHITE)
+    d.rectangle([(0, height - 82), (width, height)], fill=backdrop)
 
-    logo_size = 120
+    logo_size = 110
     abbr = ''.join([w[0] for w in school_name.split()[:3]]).upper()[:3]
     logo = load_logo_image(logo_size, fallback_text=abbr or "TG")
-    logo_bg = Image.new('RGBA', (logo_size + 20, logo_size + 20), (255, 255, 255, 0))
-    logo_bg.paste(logo, (10, 10), logo)
-    img.paste(logo_bg, (26, 12), logo_bg)
+    logo_bg = Image.new('RGBA', (logo_size + 18, logo_size + 18), (255, 255, 255, 0))
+    logo_bg.paste(logo, (9, 9), logo)
+    img.paste(logo_bg, (28, 22), logo_bg)
 
-    d.text((170, 32), school_name.upper(), fill=BLUE, font=get_font(24, True))
-    d.text((170, 76), f"{cfg['flag']} {cfg['name']}", fill=DARK_GRAY, font=get_font(14))
-    d.text((width - 30, 34), "TEACHER ID", fill=WHITE, font=get_font(20, True), anchor='rt')
-    d.text((width - 30, 72), "Faculty Credential", fill=WHITE, font=get_font(12), anchor='rt')
+    d.text((170, 36), school_name.upper(), fill=WHITE, font=get_font(25, True))
+    d.text((170, 82), f"{cfg['flag']} {cfg['name']} • Academic Affairs", fill=WHITE, font=get_font(14))
+    d.text((width - 32, 40), "FACULTY ID", fill=WHITE, font=get_font(20, True), anchor='rt')
+    d.text((width - 32, 80), "Professional Educator", fill=WHITE, font=get_font(12), anchor='rt')
 
-    photo = download_real_photo(teacher_id).resize((220, 260), Image.Resampling.LANCZOS)
-    photo_x, photo_y = 40, 210
-    frame = [(photo_x - 6, photo_y - 6), (photo_x + 220 + 6, photo_y + 260 + 6)]
-    d.rounded_rectangle(frame, radius=20, fill=WHITE, outline=BLUE, width=3)
+    photo = download_real_photo(teacher_id).resize((230, 270), Image.Resampling.LANCZOS)
+    photo_x, photo_y = 48, 226
+    frame = [(photo_x - 8, photo_y - 8), (photo_x + 230 + 8, photo_y + 270 + 8)]
+    d.rounded_rectangle(frame, radius=22, fill=WHITE, outline=BLUE, width=3)
     img.paste(photo, (photo_x, photo_y))
 
-    d.text((300, 200), teacher_name.upper(), fill=BLACK, font=get_font(30, True))
-    d.text((300, 240), profession, fill=DARK_GRAY, font=get_font(15))
-    d.text((300, 268), f"Teacher ID: {teacher_id}", fill=BLUE, font=get_font(14, True))
-    d.text((300, 296), "Official Staff Credential", fill=GREEN, font=get_font(12, True))
+    d.text((320, 214), teacher_name.upper(), fill=BLACK, font=get_font(30, True))
+    d.text((320, 254), profession, fill=DARK_GRAY, font=get_font(16))
+    d.text((320, 286), f"Faculty ID: {teacher_id}", fill=BLUE, font=get_font(14, True))
+    d.text((320, 314), "Official School Credential", fill=GREEN, font=get_font(12, True))
 
     issued = datetime.now()
     expiry = issued + timedelta(days=365 * 4)
-    birthdate = fake.date_between(start_date='-45y', end_date='-28y')
-    phone = fake.phone_number()
-    address = fake.address().replace('\n', ', ')
 
-    left_x = 300
-    right_x = 620
-    base_y = 320
-    line_gap = 34
+    left_x = 320
+    right_x = 640
+    base_y = 344
+    line_gap = 36
 
     fields_left = [
-        ("Subject", profession.split()[0] if profession else "Teaching"),
-        ("Phone", phone),
-        ("Issued", issued.strftime('%d %B %Y')),
-        ("DOB", birthdate.strftime('%d %B %Y')),
+        ("Role", profession),
+        ("School", school_name),
+        ("Address", school_address),
+        ("Contact", f"{school_contact} | {school_email}"),
     ]
     for idx, (label, value) in enumerate(fields_left):
         y = base_y + idx * line_gap
@@ -900,24 +954,24 @@ def gen_teacher_id_auto(school_name, teacher_name, teacher_id, profession, count
         d.text((left_x, y + 18), value, fill=BLACK, font=get_font(13))
 
     fields_right = [
-        ("Teacher ID", teacher_id),
-        ("Address", address),
-        ("Valid Thru", expiry.strftime('%d %B %Y')),
-        ("Status", "Active Faculty"),
+        ("Start Date", start_date),
+        ("Academic Year", academic_year),
+        ("Employment", employment_type),
+        ("Subjects", subject),
     ]
     for idx, (label, value) in enumerate(fields_right):
         y = base_y + idx * line_gap
         d.text((right_x, y), label, fill=DARK_GRAY, font=get_font(12, True))
         d.text((right_x, y + 18), value, fill=BLACK, font=get_font(13))
 
-    stamp_r = 60
-    stamp_center = (width - 170, base_y + 40)
+    stamp_r = 64
+    stamp_center = (width - 180, base_y + 48)
     d.ellipse([
         (stamp_center[0] - stamp_r, stamp_center[1] - stamp_r),
         (stamp_center[0] + stamp_r, stamp_center[1] + stamp_r)
-    ], outline=RED, width=4)
-    d.text((stamp_center[0], stamp_center[1] - 6), "OFFICIAL", fill=RED, font=get_font(11, True), anchor='mm')
-    d.text((stamp_center[0], stamp_center[1] + 10), "SCHOOL SEAL", fill=RED, font=get_font(10, True), anchor='mm')
+    ], outline=BLUE, width=4)
+    d.text((stamp_center[0], stamp_center[1] - 6), "OFFICIAL", fill=BLUE, font=get_font(11, True), anchor='mm')
+    d.text((stamp_center[0], stamp_center[1] + 10), "SCHOOL SEAL", fill=BLUE, font=get_font(10, True), anchor='mm')
 
     try:
         qr_payload = {'name': teacher_name, 'id': teacher_id, 'role': profession}
@@ -931,17 +985,25 @@ def gen_teacher_id_auto(school_name, teacher_name, teacher_id, profession, count
     except Exception as e:
         logger.error(f"❌ QR error: {e}")
 
-    sig_y = height - 132
-    d.line([(300, sig_y), (520, sig_y)], fill=DARK_GRAY, width=2)
-    d.text((410, sig_y - 24), "Authorized Signature", fill=DARK_GRAY, font=get_font(11), anchor='mm')
-    d.text((410, sig_y + 10), "Registrar / Principal", fill=DARK_GRAY, font=get_font(10), anchor='mm')
+    info_y = height - 180
+    d.text((320, info_y), f"Currently Employed • ID: {teacher_id}", fill=GREEN, font=get_font(12, True))
+    d.text((320, info_y + 18), f"Subjects: {subject} • Start: {start_date}", fill=BLACK, font=get_font(12))
+    d.text((320, info_y + 36), f"AY {academic_year} • {employment_type}", fill=BLACK, font=get_font(12))
+    d.text((320, info_y + 54), f"Admin: {admin_name} ({admin_title})", fill=DARK_GRAY, font=get_font(12))
+    d.text((320, info_y + 72), f"Website: {school_website}", fill=DARK_GRAY, font=get_font(11))
+    d.text((320, info_y + 90), f"Issued: {issued.strftime('%d %b %Y')}", fill=DARK_GRAY, font=get_font(11))
 
-    barcode_text = f"AC-{teacher_id}-{issued.strftime('%y%m')}"
-    d.text((width - 40, sig_y + 16), barcode_text, fill=DARK_GRAY, font=get_font(11), anchor='rt')
+    sig_y = height - 132
+    d.line([(320, sig_y), (540, sig_y)], fill=DARK_GRAY, width=2)
+    d.text((430, sig_y - 24), admin_name, fill=DARK_GRAY, font=get_font(11, True), anchor='mm')
+    d.text((430, sig_y + 12), admin_title, fill=DARK_GRAY, font=get_font(10), anchor='mm')
+
+    barcode_text = f"FAC-{teacher_id}-{issued.strftime('%y%m')}"
+    d.text((width - 44, sig_y + 16), barcode_text, fill=DARK_GRAY, font=get_font(11), anchor='rt')
 
     footer_y = height - 52
     d.rectangle([(0, footer_y - 16), (width, height)], fill=BLUE)
-    d.text((30, footer_y), "Professional Faculty Identification", fill=WHITE, font=get_font(12, True))
+    d.text((30, footer_y), "Professional Faculty Identification • School letterhead", fill=WHITE, font=get_font(12, True))
     d.text((width - 30, footer_y), f"Valid {issued.strftime('%Y')} - {expiry.strftime('%Y')}", fill=WHITE, font=get_font(11), anchor='rt')
     return upscale_image(img)
 
@@ -1490,61 +1552,80 @@ def input_school_name(update: Update, context: CallbackContext):
     context.user_data['school'] = school_name
     country_code = context.user_data['country']
     cfg = COUNTRIES[country_code]
-    profile_name = (update.effective_user.full_name or '').strip()
-    suggested_name = profile_name if len(profile_name) > 2 else Faker('en_US').name()
-
+    fake = Faker(cfg['locale'])
+    auto_name = fake.name()
+    auto_profession = generate_random_profession()
     context.user_data['teacher_data'] = {
-        'name': suggested_name,
+        'name': auto_name,
         'id': generate_random_teacher_id(),
-        'profession': 'Teacher',
+        'profession': auto_profession,
     }
 
     update.message.reply_text(
-        f"✅ School: `{school_name}`\n\n"
-        f"✏️ Send your full name and role so they match Canva approval:\n"
-        f"`{suggested_name} | Teacher`\n\n"
-        f"💡 Format: Full Name | Role (Teacher/Instructor/Faculty)\n"
-        f"📄 PDFs only for clarity; blurry or mismatched names get rejected.\n\n"
+        f"✅ School: `{school_name}`\n"
+        f"👤 `{auto_name}`\n"
+        f"👔 {auto_profession}\n"
+        f"🆔 `{context.user_data['teacher_data']['id']}`\n"
+        f"🌍 {cfg['flag']} {cfg['name']}\n\n"
+        f"📄 Auto-filled with professional faculty details (Faker) — no name input needed.\n"
+        f"🖨️ Output: clear blue PDF letterheads with seals, signatures, and QR.\n\n"
+        f"🔢 Quantity? (1-50)\n"
+        f"📌 Tap a button or type a number\n\n"
         f"/cancel",
-        parse_mode='Markdown'
+        parse_mode='Markdown',
+        reply_markup=quantity_keyboard(),
     )
-    return INPUT_TEACHER_DETAILS
+    return INPUT_QTY
 
 def input_teacher_details(update: Update, context: CallbackContext):
-    text = update.message.text.strip()
     base = context.user_data.get('teacher_data', {})
-    current_name = base.get('name') or (update.effective_user.full_name or '').strip()
-    if not current_name or len(current_name) < 3:
-        current_name = Faker('en_US').name()
+    cfg = COUNTRIES[context.user_data['country']]
+    fake = Faker(cfg['locale'])
 
-    if '|' in text:
-        name_part, role_part = text.split('|', 1)
-        teacher_name = name_part.strip() or current_name
-        profession = role_part.strip() or 'Teacher'
-    else:
-        teacher_name = text if len(text) > 2 else current_name
-        profession = 'Teacher'
-
+    teacher_name = base.get('name') or fake.name()
+    profession = base.get('profession') or generate_random_profession()
     teacher_id = base.get('id') or generate_random_teacher_id()
-    context.user_data['teacher_data'] = {'name': teacher_name, 'id': teacher_id, 'profession': profession}
+    start_date = base.get('start_date') or fake.date_between(start_date='-6y', end_date='-1y').strftime('%d %b %Y')
+    academic_year = base.get('academic_year') or f"{datetime.now().year}-{datetime.now().year + 1}"
+    employment_type = base.get('employment_type') or random.choice(['Full-Time Faculty', 'Part-Time Faculty', 'Adjunct', 'Permanent Staff'])
+    subject = base.get('subject') or random.choice(['Mathematics', 'Science', 'English', 'Computer Science', 'History', 'Economics'])
+    admin_name = base.get('admin_name') or fake.name()
+    admin_title = base.get('admin_title') or random.choice(['Principal', 'Administrator', 'Registrar', 'Dean'])
+    school_address = base.get('school_address') or f"{fake.city()}, {cfg['name']}"
+    school_contact = base.get('school_contact') or fake.phone_number()
+    school_email = base.get('school_email') or fake.company_email()
+    school_website = base.get('school_website') or f"https://www.{fake.domain_name()}"
+    context.user_data['teacher_data'] = {
+        'name': teacher_name,
+        'id': teacher_id,
+        'profession': profession,
+        'start_date': start_date,
+        'academic_year': academic_year,
+        'employment_type': employment_type,
+        'subject': subject,
+        'admin_name': admin_name,
+        'admin_title': admin_title,
+        'school_address': school_address,
+        'school_contact': school_contact,
+        'school_email': school_email,
+        'school_website': school_website,
+    }
 
     school_name = context.user_data['school']
-    cfg = COUNTRIES[context.user_data['country']]
 
     update.message.reply_text(
         f"✅ School: `{school_name}`\n"
         f"👤 `{teacher_name}`\n"
         f"👔 {profession}\n"
         f"🆔 `{teacher_id}`\n"
+        f"🏫 Address: `{school_address}`\n"
+        f"☎️ {school_contact} | ✉️ {school_email}\n"
+        f"🌐 {school_website}\n"
+        f"📅 Employed since {start_date} ({employment_type})\n"
+        f"📚 Teaches {subject} | AY {academic_year}\n"
         f"🌍 {cfg['flag']} {cfg['name']}\n\n"
-        f"📋 Fast approval checklist (PDF uploads recommended):\n"
-        f"- Clear, readable photo (no blur)\n"
-        f"- Full name exactly as your Canva account\n"
-        f"- School name/logo or stamp\n"
-        f"- Role shown (Teacher/Instructor/Educator/Staff)\n"
-        f"- Current-year date if possible\n\n"
-        f"✅ Use a real school document (not generated): ID card, employment letter/contract, staff badge, portal screenshot,\n"
-        f"   accreditation/certificate, letter from admin; pay stub only if sensitive info is hidden.\n\n"
+        f"📄 Auto-generated faculty identity (Faker) — keeping names professional without asking.\n"
+        f"🖨️ Clear blue PDFs with seals, QR, school letterhead, admin signature line, and contact info.\n\n"
         f"🔢 Quantity? (1-50)\n"
         f"📌 Tap a button or type a number\n\n"
         f"/cancel",
@@ -1598,7 +1679,7 @@ def process_quantity(qty: int, update: Update, context: CallbackContext):
     school_name = context.user_data['school']
     doc_type = context.user_data['doc_type']
     cfg = COUNTRIES[country_code]
-    fake = Faker('en_US')
+    fake = Faker(cfg['locale'])
     message = update.effective_message
 
     # SAVE COUNTRY TO MEMORY
@@ -1613,8 +1694,34 @@ def process_quantity(qty: int, update: Update, context: CallbackContext):
                 name = teacher_data.get('name') or fake.name()
                 tid = teacher_data.get('id') or generate_random_teacher_id()
                 profession = teacher_data.get('profession') or 'Teacher'
+                start_date = teacher_data.get('start_date') or fake.date_between(start_date='-6y', end_date='-1y').strftime('%d %b %Y')
+                academic_year = teacher_data.get('academic_year') or f"{datetime.now().year}-{datetime.now().year + 1}"
+                employment_type = teacher_data.get('employment_type') or 'Full-Time Faculty'
+                subject = teacher_data.get('subject') or 'Education'
+                admin_name = teacher_data.get('admin_name') or fake.name()
+                admin_title = teacher_data.get('admin_title') or 'Principal'
+                school_address = teacher_data.get('school_address') or f"{fake.city()}, {cfg['name']}"
+                school_contact = teacher_data.get('school_contact') or fake.phone_number()
+                school_email = teacher_data.get('school_email') or fake.company_email()
+                school_website = teacher_data.get('school_website') or f"https://www.{fake.domain_name()}"
 
-                id_img = gen_teacher_id_auto(school_name, name, tid, profession, country_code)
+                id_img = gen_teacher_id_auto(
+                    school_name,
+                    name,
+                    tid,
+                    profession,
+                    school_address,
+                    school_contact,
+                    school_email,
+                    admin_name,
+                    admin_title,
+                    start_date,
+                    subject,
+                    employment_type,
+                    academic_year,
+                    school_website,
+                    country_code,
+                )
                 buf_id = BytesIO()
                 id_img.convert("RGB").save(buf_id, format='PDF')
                 buf_id.seek(0)
@@ -1623,19 +1730,39 @@ def process_quantity(qty: int, update: Update, context: CallbackContext):
                 # TAP-TO-COPY CAPTION
                 cap_id = (
                     f"✅ TEACHER ID #{i+1}/{qty}\n\n"
-                    f"👤 `{name}`\n"
+                    f"👤 `{name}` ({profession})\n"
+                    f"🆔 `{tid}` | AY {academic_year}\n"
                     f"🏫 `{school_name}`\n"
-                    f"🆔 `{tid}`\n"
-                    f"👔 {profession}\n"
+                    f"📍 {school_address}\n"
+                    f"☎️ {school_contact} | ✉️ {school_email}\n"
+                    f"🌐 {school_website}\n"
+                    f"📚 {subject} • Since {start_date} ({employment_type})\n"
+                    f"👤 Admin: {admin_name} ({admin_title})\n"
                     f"🌍 {cfg['flag']} {cfg['name']}\n\n"
                     f"💡 Tap to copy\n"
                     f"📅 {now().strftime('%Y-%m-%d %H:%M:%S')}\n"
-                    f"🗂️ High-res PDF with seal + signature line"
+                    f"🗂️ Blue letterhead PDF with seal, QR, admin signature, and contact info"
                 )
                 message.reply_document(document=buf_id, caption=cap_id, parse_mode='Markdown')
                 buf_id.close()
 
-                sal_img = gen_salary_receipt_auto(school_name, name, tid, profession, country_code)
+                sal_img = gen_salary_receipt_auto(
+                    school_name,
+                    name,
+                    tid,
+                    profession,
+                    school_address,
+                    school_contact,
+                    school_email,
+                    admin_name,
+                    admin_title,
+                    start_date,
+                    subject,
+                    employment_type,
+                    academic_year,
+                    school_website,
+                    country_code,
+                )
                 buf_sal = BytesIO()
                 sal_img.convert("RGB").save(buf_sal, format='PDF')
                 buf_sal.seek(0)
@@ -1643,13 +1770,17 @@ def process_quantity(qty: int, update: Update, context: CallbackContext):
 
                 cap_sal = (
                     f"💵 SALARY RECEIPT #{i+1}/{qty}\n\n"
-                    f"👤 `{name}`\n"
+                    f"👤 `{name}` ({profession})\n"
+                    f"🆔 `{tid}` | Since {start_date}\n"
                     f"🏫 `{school_name}`\n"
-                    f"🆔 `{tid}`\n"
-                    f"👔 {profession}\n"
+                    f"📍 {school_address}\n"
+                    f"☎️ {school_contact} | ✉️ {school_email}\n"
+                    f"🌐 {school_website}\n"
+                    f"📚 {subject} • {employment_type} • AY {academic_year}\n"
+                    f"👤 Admin: {admin_name} ({admin_title})\n"
                     f"🌍 {cfg['flag']} {cfg['name']}\n"
                     f"📅 {now().strftime('%Y-%m-%d')} (current)\n"
-                    f"🗂️ Letterhead PDF with payroll stamp + signature"
+                    f"🗂️ Clear blue payroll PDF with letterhead, seal, admin signature"
                 )
                 message.reply_document(document=buf_sal, caption=cap_sal, parse_mode='Markdown')
                 buf_sal.close()
@@ -1716,14 +1847,11 @@ def process_quantity(qty: int, update: Update, context: CallbackContext):
             f"🌍 {cfg['flag']} {cfg['name']}\n"
             f"📸 Real Photos: ✅\n"
             f"🔳 QR Codes: ✅\n"
-            f"🗂️ Exported as clear PDF files with letterhead, seal, and signature lines\n"
+            f"🗂️ Exported as clear PDF files with letterhead, seal, admin signature, and contact details\n"
             f"🧠 Country Saved!\n\n"
-            f"📋 For Canva approval, upload a REAL school document showing:\n"
-            f"• Your full name matching your account\n"
-            f"• School name/logo\n"
-            f"• Your role (Teacher/Instructor/Educator/Staff)\n"
-            f"• Recent date/status if possible\n\n"
-            f"👍 Acceptable: ID card, employment letter/contract, staff badge, portal screenshot, accreditation/certificate, letter from admin; pay stub only if you hide sensitive info.\n\n"
+            f"📋 Each PDF now shows: full name, role, school name, school address, contact info, current employment confirmation, admin name + signature line, issue date, and teacher ID.\n"
+            f"🔵 Bonus details included: employment start date, subjects taught, school website, academic year, and employment type.\n\n"
+            f"👍 For Canva approval, prefer REAL school documents (ID card, employment/offer letter, contract, staff badge, portal screenshot, accreditation/certificate, or admin letter). Pay stubs only if sensitive info is hidden.\n\n"
             f"/start"
         )
     else:
