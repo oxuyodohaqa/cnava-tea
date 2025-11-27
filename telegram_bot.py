@@ -751,7 +751,8 @@ def gen_salary_receipt_auto(
     employment_type,
     academic_year,
     school_website,
-    country_code='IN'
+    country_code='IN',
+    issue_date=None,
 ):
     cfg = COUNTRIES.get(country_code, COUNTRIES['IN'])
     fake = Faker(cfg['locale'])
@@ -760,7 +761,8 @@ def gen_salary_receipt_auto(
     primary = NAVY_BLUE
     img = Image.new('RGB', (width, height), canvas_color)
     d = ImageDraw.Draw(img)
-    today = datetime.now()
+    issued = issue_date or datetime.now()
+    today = issued
     period_length = random.randint(14, 30)
     period_start = today - timedelta(days=period_length)
     period_end = today
@@ -779,7 +781,7 @@ def gen_salary_receipt_auto(
     d.text((48, 34), school_name.upper(), fill=WHITE, font=get_font(28, True))
     d.text((48, 78), f"{cfg['flag']} {cfg['name']} | Payroll & HR", fill=WHITE, font=get_font(14))
     d.text((width - 48, 40), "PAYSLIP", fill=WHITE, font=get_font(26, True), anchor='rt')
-    d.text((width - 48, 82), today.strftime('%d %B %Y'), fill=WHITE, font=get_font(14), anchor='rt')
+    d.text((width - 48, 82), issued.strftime('%d %B %Y'), fill=WHITE, font=get_font(14), anchor='rt')
     d.text((width - 48, 122), "CONFIDENTIAL EMPLOYEE COPY", fill=WHITE, font=get_font(12), anchor='rt')
 
     card_top = header_h + 18
@@ -858,25 +860,39 @@ def gen_salary_receipt_auto(
     d.text((48, confirm_top + 82), f"AY: {academic_year} | Type: {employment_type}", fill=BLACK, font=get_font(12))
     d.text((width - 48, confirm_top + 38), f"Administrator: {admin_name}", fill=DARK_GRAY, font=get_font(12), anchor='rt')
     d.text((width - 48, confirm_top + 60), f"Title: {admin_title}", fill=DARK_GRAY, font=get_font(12), anchor='rt')
-    d.text((width - 48, confirm_top + 82), f"Issued: {today.strftime('%b %d, %Y')}", fill=DARK_GRAY, font=get_font(12), anchor='rt')
+    d.text((width - 48, confirm_top + 82), f"Issued: {issued.strftime('%b %d, %Y')}", fill=DARK_GRAY, font=get_font(12), anchor='rt')
 
     footer_y = confirm_top + 170
     d.text((48, footer_y), f"Contact: {school_contact} | {school_email}", fill=DARK_GRAY, font=get_font(10))
     d.text((width - 48, footer_y), f"{school_address}", fill=DARK_GRAY, font=get_font(10), anchor='rt')
 
-    seal_r = 52
-    seal_center = (width - 150, footer_y - 10)
-    d.ellipse([
-        (seal_center[0] - seal_r, seal_center[1] - seal_r),
-        (seal_center[0] + seal_r, seal_center[1] + seal_r)
-    ], outline=primary, width=4)
-    d.text((seal_center[0], seal_center[1] - 6), "OFFICIAL", fill=primary, font=get_font(10, True), anchor='mm')
-    d.text((seal_center[0], seal_center[1] + 10), "PAYROLL SEAL", fill=primary, font=get_font(10, True), anchor='mm')
+    certification_y = footer_y - 36
+    d.text(
+        (width - 48, certification_y),
+        f"Certified by {school_name} HR",
+        fill=DARK_GRAY,
+        font=get_font(11, True),
+        anchor='rt'
+    )
+    d.text(
+        (width - 48, certification_y + 18),
+        f"Signed: {admin_name} ({admin_title})",
+        fill=DARK_GRAY,
+        font=get_font(10),
+        anchor='rt'
+    )
+    d.text(
+        (width - 48, certification_y + 36),
+        f"School Contact: {school_contact}",
+        fill=DARK_GRAY,
+        font=get_font(10),
+        anchor='rt'
+    )
 
     sig_y = footer_y - 18
     d.line([(48, sig_y), (280, sig_y)], fill=DARK_GRAY, width=2)
-    d.text((164, sig_y - 20), admin_name, fill=DARK_GRAY, font=get_font(10, True), anchor='mm')
-    d.text((164, sig_y + 14), admin_title, fill=DARK_GRAY, font=get_font(10), anchor='mm')
+    d.text((48, sig_y - 26), f"Signed: {admin_name}", fill=DARK_GRAY, font=get_font(10, True))
+    d.text((48, sig_y - 10), f"Title: {admin_title}", fill=DARK_GRAY, font=get_font(10))
     return upscale_image(img)
 
 
@@ -898,7 +914,8 @@ def gen_teacher_id_auto(
     employment_type,
     academic_year,
     school_website,
-    country_code='IN'
+    country_code='IN',
+    issue_date=None,
 ):
     cfg = COUNTRIES.get(country_code, COUNTRIES['IN'])
     fake = Faker(cfg['locale'])
@@ -937,7 +954,7 @@ def gen_teacher_id_auto(
     d.text((320, 286), f"Faculty ID: {teacher_id}", fill=primary, font=get_font(14, True))
     d.text((320, 314), "Official School Credential", fill=GREEN, font=get_font(12, True))
 
-    issued = datetime.now()
+    issued = issue_date or datetime.now()
     expiry = issued + timedelta(days=365 * 4)
 
     left_x = 320
@@ -967,14 +984,21 @@ def gen_teacher_id_auto(
         d.text((right_x, y), label, fill=DARK_GRAY, font=get_font(12, True))
         d.text((right_x, y + 18), value, fill=BLACK, font=get_font(13))
 
-    stamp_r = 60
-    stamp_center = (width - 180, base_y + 60)
-    d.ellipse([
-        (stamp_center[0] - stamp_r, stamp_center[1] - stamp_r),
-        (stamp_center[0] + stamp_r, stamp_center[1] + stamp_r)
-    ], outline=primary, width=4)
-    d.text((stamp_center[0], stamp_center[1] - 6), "OFFICIAL", fill=primary, font=get_font(11, True), anchor='mm')
-    d.text((stamp_center[0], stamp_center[1] + 10), "SCHOOL SEAL", fill=primary, font=get_font(10, True), anchor='mm')
+    certification_x = width - 220
+    certification_y = base_y + 42
+    d.text((certification_x, certification_y), "Certified Employment", fill=primary, font=get_font(12, True))
+    d.text(
+        (certification_x, certification_y + 22),
+        f"Signed: {admin_name}",
+        fill=DARK_GRAY,
+        font=get_font(11)
+    )
+    d.text(
+        (certification_x, certification_y + 40),
+        f"Title: {admin_title}",
+        fill=DARK_GRAY,
+        font=get_font(10)
+    )
 
     try:
         qr_payload = {'name': teacher_name, 'id': teacher_id, 'role': profession}
@@ -998,8 +1022,8 @@ def gen_teacher_id_auto(
 
     sig_y = height - 166
     d.line([(320, sig_y), (560, sig_y)], fill=DARK_GRAY, width=2)
-    d.text((440, sig_y - 26), admin_name, fill=DARK_GRAY, font=get_font(11, True), anchor='mm')
-    d.text((440, sig_y + 12), admin_title, fill=DARK_GRAY, font=get_font(10), anchor='mm')
+    d.text((320, sig_y - 24), f"Signed: {admin_name}", fill=DARK_GRAY, font=get_font(11, True))
+    d.text((320, sig_y - 6), f"Title: {admin_title}", fill=DARK_GRAY, font=get_font(10))
 
     barcode_text = f"FAC-{teacher_id}-{issued.strftime('%y%m')}"
     d.text((width - 44, sig_y + 16), barcode_text, fill=DARK_GRAY, font=get_font(11), anchor='rt')
@@ -1754,6 +1778,8 @@ def process_quantity(qty: int, update: Update, context: CallbackContext):
                 used_teacher_names.add(name.lower())
                 used_teacher_ids.add(tid)
 
+                issue_date = datetime.now() - timedelta(days=random.randint(0, 330))
+
                 id_img = gen_teacher_id_auto(
                     school_name,
                     name,
@@ -1770,6 +1796,7 @@ def process_quantity(qty: int, update: Update, context: CallbackContext):
                     academic_year,
                     school_website,
                     country_code,
+                    issue_date,
                 )
                 buf_id = BytesIO()
                 id_img.convert("RGB").save(buf_id, format='PDF')
@@ -1811,6 +1838,7 @@ def process_quantity(qty: int, update: Update, context: CallbackContext):
                     academic_year,
                     school_website,
                     country_code,
+                    issue_date,
                 )
                 buf_sal = BytesIO()
                 sal_img.convert("RGB").save(buf_sal, format='PDF')
