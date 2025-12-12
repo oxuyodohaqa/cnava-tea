@@ -212,6 +212,40 @@ async function blockAllCookies(page, browserId) {
     }
 }
 
+// Apply stealth-like client hints and navigator overrides beyond the default plugin
+async function applyUndetectableSettings(page, browserId) {
+    const jitterWidth = 360 + Math.floor(Math.random() * 30);
+    const jitterHeight = 900 + Math.floor(Math.random() * 80);
+    const userAgent = getRandomUserAgent();
+
+    await page.setUserAgent(userAgent);
+    await page.setViewport({ width: jitterWidth, height: jitterHeight });
+    await page.setExtraHTTPHeaders({
+        'Accept-Language': 'en-US,en;q=0.9'
+    });
+
+    await page.evaluateOnNewDocument(() => {
+        Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+        Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] });
+        Object.defineProperty(navigator, 'platform', { get: () => 'Win32' });
+        Object.defineProperty(navigator, 'deviceMemory', { get: () => 8 });
+        Object.defineProperty(navigator, 'hardwareConcurrency', { get: () => 8 });
+        Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
+
+        const originalQuery = window.navigator.permissions.query;
+        window.navigator.permissions.query = (parameters) => (
+            parameters.name === 'notifications'
+                ? Promise.resolve({ state: 'denied', onchange: null })
+                : originalQuery(parameters)
+        );
+
+        window.chrome = window.chrome || {};
+        window.chrome.app = window.chrome.app || { InstallState: 'installed', RunningState: 'running' };
+    });
+
+    console.log(`[B-${browserId}] 🕵️ Applied undetectable browser settings`);
+}
+
 // Smart Continue button clicker - works even with captcha present
 async function smartClickContinue(page, browserId, attempts = 6) {
     try {
@@ -525,33 +559,76 @@ async function verifyStudentAccount(page, browserId, verificationUrl, email, pas
         });
 
         await fastDelay(1000);
-        
-const isConfirmationPage = await page.evaluate(() => {
-    const url = window.location.href;
-    const pageText = document.body.textContent.toLowerCase();
-    
-    // Multi-language confirmation page detection
-    const confirmationIndicators = [
-        'confirm your account', 'confirm', 'verification', 'bevestigen',
-        'student discount', 'verify', 'potvrdit', 'confirmer', 'bestätigen',
-        '确认', 'bevestig', 'confirma', 'confirmar', 'onayla', '確認'
-    ];
-    
-    return (url.includes('student') && url.includes('apply')) ||
-           confirmationIndicators.some(indicator => pageText.includes(indicator));
-});
-        
+
+        // Check if the page already shows a verified or error state before any interaction
+        const successIndicators = [
+            'verified', 'you\'re verified', 'student status is verified',
+            'verification successful', 'verification complete', 'confirmed',
+            'success', 'complete', 'discount activated', 'student discount confirmed',
+            'congratulations', 'úspěch', 'successo', 'éxito', 'erfolg', '成功'
+        ];
+
+        const failureIndicators = [
+            'something went wrong', 'try again later', 'unexpected error', 'verification failed'
+        ];
+
+        const { isConfirmationPage, alreadyVerified, errorState } = await page.evaluate((successIndicators, failureIndicators) => {
+            const url = window.location.href;
+            const pageText = document.body.textContent.toLowerCase();
+
+            // Multi-language confirmation page detection
+            const confirmationIndicators = [
+                'confirm your account', 'confirm', 'verification', 'bevestigen',
+                'student discount', 'verify', 'potvrdit', 'confirmer', 'bestätigen',
+                '确认', 'bevestig', 'confirma', 'confirmar', 'onayla', '確認'
+            ];
+
+            const confirmationPage = (url.includes('student') && url.includes('apply')) ||
+                confirmationIndicators.some(indicator => pageText.includes(indicator));
+
+            const verifiedPage = successIndicators.some(indicator => pageText.includes(indicator)) ||
+                url.includes('success') || url.includes('complete') ||
+                url.includes('verified') || url.includes('successo') ||
+                url.includes('úspěch') || url.includes('éxito');
+
+            const failedPage = failureIndicators.some(indicator => pageText.includes(indicator)) ||
+                url.includes('error') || url.includes('failure');
+
+            return { isConfirmationPage: confirmationPage, alreadyVerified: verifiedPage, errorState: failedPage };
+        }, successIndicators, failureIndicators);
+
+        if (errorState) {
+            console.log(`[B-${browserId}] ❌ Error message detected on verification page`);
+
+            const unverifiedData = `${email}:${password}\n`;
+            await fs.appendFile('unverified.txt', unverifiedData);
+            console.log(`[B-${browserId}] 💾 Account saved to unverified.txt (error page)`);
+
+            return false;
+        }
+
+        // If the page already shows a verified message, treat it as success immediately
+        if (alreadyVerified) {
+            console.log(`[B-${browserId}] 🎉 Verification already completed on page load!`);
+
+            const accountData = `${email}:${password}\n`;
+            await fs.appendFile('verifiedstudent.txt', accountData);
+            console.log(`[B-${browserId}] 💾 Account saved to verifiedstudent.txt!`);
+
+            return true;
+        }
+
         if (!isConfirmationPage) {
             console.log(`[B-${browserId}] ❌ NOT a confirmation page - verification FAILED`);
-            
+
             // Save to unverified file
             const unverifiedData = `${email}:${password}\n`;
             await fs.appendFile('unverified.txt', unverifiedData);
             console.log(`[B-${browserId}] 💾 Account saved to unverified.txt (wrong page)`);
-            
+
             return false; // ❌ FAIL - not confirmation page
         }
-        
+
         console.log(`[B-${browserId}] ✅ Student confirmation page detected!`);
         
         let confirmClicked = false;
@@ -572,15 +649,15 @@ const isConfirmationPage = await page.evaluate(() => {
                     for (const element of elements) {
                         const text = (element.textContent || element.innerText || '').trim().toLowerCase();
                         // Multi-language confirmation button texts
-const confirmTexts = [
-    'confirm', 'bevestigen', 'potvrdit', 'confirmer', 'bestätigen',
-    '确认', 'bevestig', 'confirma', 'confirmar', 'onayla', '確認'
-];
+                        const confirmTexts = [
+                            'confirm', 'bevestigen', 'potvrdit', 'confirmer', 'bestätigen',
+                            '确认', 'bevestig', 'confirma', 'confirmar', 'onayla', '確認'
+                        ];
 
-if (confirmTexts.some(confirmText => text === confirmText || text.includes(confirmText))) {
+                        if (confirmTexts.some(confirmText => text === confirmText || text.includes(confirmText))) {
                             const style = window.getComputedStyle(element);
                             const rect = element.getBoundingClientRect();
-                            
+
                             if (rect.width > 0 && rect.height > 0 && style.display !== 'none') {
                                 try {
                                     const parentButton = element.closest('button');
@@ -626,23 +703,28 @@ if (confirmTexts.some(confirmText => text === confirmText || text.includes(confi
         console.log(`[B-${browserId}] ⏳ Waiting for verification message...`);
         
         try {
-await page.waitForFunction(() => {
-    const pageText = document.body.textContent.toLowerCase();
-    const url = window.location.href;
-    
-    // Multi-language success indicators
-    const successIndicators = [
-        'verified', 'you\'re verified', 'student status is verified',
-        'verification successful', 'verification complete', 'confirmed',
-        'success', 'complete', 'discount activated', 'student discount confirmed',
-        'congratulations', 'úspěch', 'successo', 'éxito', 'erfolg', '成功'
-    ];
-    
-    return successIndicators.some(indicator => pageText.includes(indicator)) ||
-           url.includes('success') || url.includes('complete') || 
-           url.includes('verified') || url.includes('successo') ||
-           url.includes('úspěch') || url.includes('éxito');
-}, { timeout: 45000 });
+            const resultHandle = await page.waitForFunction((indicators, failureIndicators) => {
+                const pageText = document.body.textContent.toLowerCase();
+                const url = window.location.href;
+
+                const success = indicators.some(indicator => pageText.includes(indicator)) ||
+                    url.includes('success') || url.includes('complete') ||
+                    url.includes('verified') || url.includes('successo') ||
+                    url.includes('úspěch') || url.includes('éxito');
+
+                const failure = failureIndicators.some(indicator => pageText.includes(indicator)) ||
+                    url.includes('error') || url.includes('failure');
+
+                if (success) return 'success';
+                if (failure) return 'failure';
+                return false;
+            }, { timeout: 45000 }, successIndicators, failureIndicators);
+
+            const result = await resultHandle.jsonValue();
+
+            if (result === 'failure') {
+                throw new Error('VERIFICATION_ERROR_PAGE');
+            }
             
             console.log(`[B-${browserId}] ✅ VERIFICATION MESSAGE DETECTED!`);
             console.log(`[B-${browserId}] 🎉 STUDENT VERIFICATION COMPLETED!`);
@@ -657,14 +739,18 @@ await page.waitForFunction(() => {
             return true; // ✅ SUCCESS - Actually verified!
             
         } catch (timeoutError) {
-            console.log(`[B-${browserId}] ❌ Verification timeout - verification FAILED`);
-            
+            if (timeoutError.message === 'VERIFICATION_ERROR_PAGE') {
+                console.log(`[B-${browserId}] ❌ Verification page shows an error message`);
+            } else {
+                console.log(`[B-${browserId}] ❌ Verification timeout - verification FAILED`);
+            }
+
             // Save to unverified file
             const unverifiedData = `${email}:${password}\n`;
             await fs.appendFile('unverified.txt', unverifiedData);
-            console.log(`[B-${browserId}] 💾 Account saved to unverified.txt (timeout)`);
-            
-            return false; // ❌ FAIL - timeout
+            console.log(`[B-${browserId}] 💾 Account saved to unverified.txt (${timeoutError.message === 'VERIFICATION_ERROR_PAGE' ? 'error message' : 'timeout'})`);
+
+            return false; // ❌ FAIL - timeout or error page
         }
         
     } catch (error) {
@@ -707,6 +793,7 @@ async function signupOnly() {
     
     const browser = await puppeteer.launch({
         headless: false,
+        ignoreDefaultArgs: ['--enable-automation'],
         args: [
             "--no-sandbox",
             "--disable-setuid-sandbox",
@@ -717,6 +804,7 @@ async function signupOnly() {
             "--no-first-run",
             "--disable-default-apps",
             "--disable-popup-blocking",
+            "--lang=en-US,en",
             `--disable-extensions-except=${extensionPath}`,
             `--load-extension=${extensionPath}`,
             `--window-size=370,950`,
@@ -734,9 +822,7 @@ async function signupOnly() {
         console.log(`[B-${browserId}] 🚀 SIGNUP ONLY: ${email}`);
         
         const page = await browser.newPage();
-        
-        const userAgent = getRandomUserAgent();
-        await page.setUserAgent(userAgent);
+        await applyUndetectableSettings(page, browserId);
         
         await page.evaluate((browserId) => {
             document.title = `🚀 Spotify-${browserId} - SIGNUP ONLY`;
@@ -1052,6 +1138,7 @@ async function signupAndVerify() {
     
     const browser = await puppeteer.launch({
         headless: false,
+        ignoreDefaultArgs: ['--enable-automation'],
         args: [
             "--no-sandbox",
             "--disable-setuid-sandbox",
@@ -1062,6 +1149,7 @@ async function signupAndVerify() {
             "--no-first-run",
             "--disable-default-apps",
             "--disable-popup-blocking",
+            "--lang=en-US,en",
             `--disable-extensions-except=${extensionPath}`,
             `--load-extension=${extensionPath}`,
             `--window-size=370,950`,
@@ -1080,9 +1168,7 @@ async function signupAndVerify() {
         console.log(`[B-${browserId}] 🔗 Unique link assigned`);
         
         const page = await browser.newPage();
-        
-        const userAgent = getRandomUserAgent();
-        await page.setUserAgent(userAgent);
+        await applyUndetectableSettings(page, browserId);
         
         await page.evaluate((browserId) => {
             document.title = `🚀 Spotify-${browserId} - SIGNUP + VERIFY`;
