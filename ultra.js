@@ -526,7 +526,7 @@ async function verifyStudentAccount(page, browserId, verificationUrl, email, pas
 
         await fastDelay(1000);
 
-        // Check if the page already shows a verified state before any interaction
+        // Check if the page already shows a verified or error state before any interaction
         const successIndicators = [
             'verified', 'you\'re verified', 'student status is verified',
             'verification successful', 'verification complete', 'confirmed',
@@ -534,7 +534,11 @@ async function verifyStudentAccount(page, browserId, verificationUrl, email, pas
             'congratulations', 'úspěch', 'successo', 'éxito', 'erfolg', '成功'
         ];
 
-        const { isConfirmationPage, alreadyVerified } = await page.evaluate((successIndicators) => {
+        const failureIndicators = [
+            'something went wrong', 'try again later', 'unexpected error', 'verification failed'
+        ];
+
+        const { isConfirmationPage, alreadyVerified, errorState } = await page.evaluate((successIndicators, failureIndicators) => {
             const url = window.location.href;
             const pageText = document.body.textContent.toLowerCase();
 
@@ -553,8 +557,21 @@ async function verifyStudentAccount(page, browserId, verificationUrl, email, pas
                 url.includes('verified') || url.includes('successo') ||
                 url.includes('úspěch') || url.includes('éxito');
 
-            return { isConfirmationPage: confirmationPage, alreadyVerified: verifiedPage };
-        }, successIndicators);
+            const failedPage = failureIndicators.some(indicator => pageText.includes(indicator)) ||
+                url.includes('error') || url.includes('failure');
+
+            return { isConfirmationPage: confirmationPage, alreadyVerified: verifiedPage, errorState: failedPage };
+        }, successIndicators, failureIndicators);
+
+        if (errorState) {
+            console.log(`[B-${browserId}] ❌ Error message detected on verification page`);
+
+            const unverifiedData = `${email}:${password}\n`;
+            await fs.appendFile('unverified.txt', unverifiedData);
+            console.log(`[B-${browserId}] 💾 Account saved to unverified.txt (error page)`);
+
+            return false;
+        }
 
         // If the page already shows a verified message, treat it as success immediately
         if (alreadyVerified) {
@@ -598,15 +615,15 @@ async function verifyStudentAccount(page, browserId, verificationUrl, email, pas
                     for (const element of elements) {
                         const text = (element.textContent || element.innerText || '').trim().toLowerCase();
                         // Multi-language confirmation button texts
-const confirmTexts = [
-    'confirm', 'bevestigen', 'potvrdit', 'confirmer', 'bestätigen',
-    '确认', 'bevestig', 'confirma', 'confirmar', 'onayla', '確認'
-];
+                        const confirmTexts = [
+                            'confirm', 'bevestigen', 'potvrdit', 'confirmer', 'bestätigen',
+                            '确认', 'bevestig', 'confirma', 'confirmar', 'onayla', '確認'
+                        ];
 
-if (confirmTexts.some(confirmText => text === confirmText || text.includes(confirmText))) {
+                        if (confirmTexts.some(confirmText => text === confirmText || text.includes(confirmText))) {
                             const style = window.getComputedStyle(element);
                             const rect = element.getBoundingClientRect();
-                            
+
                             if (rect.width > 0 && rect.height > 0 && style.display !== 'none') {
                                 try {
                                     const parentButton = element.closest('button');
@@ -652,15 +669,28 @@ if (confirmTexts.some(confirmText => text === confirmText || text.includes(confi
         console.log(`[B-${browserId}] ⏳ Waiting for verification message...`);
         
         try {
-await page.waitForFunction((indicators) => {
-    const pageText = document.body.textContent.toLowerCase();
-    const url = window.location.href;
+            const resultHandle = await page.waitForFunction((indicators, failureIndicators) => {
+                const pageText = document.body.textContent.toLowerCase();
+                const url = window.location.href;
 
-    return indicators.some(indicator => pageText.includes(indicator)) ||
-           url.includes('success') || url.includes('complete') ||
-           url.includes('verified') || url.includes('successo') ||
-           url.includes('úspěch') || url.includes('éxito');
-}, { timeout: 45000 }, successIndicators);
+                const success = indicators.some(indicator => pageText.includes(indicator)) ||
+                    url.includes('success') || url.includes('complete') ||
+                    url.includes('verified') || url.includes('successo') ||
+                    url.includes('úspěch') || url.includes('éxito');
+
+                const failure = failureIndicators.some(indicator => pageText.includes(indicator)) ||
+                    url.includes('error') || url.includes('failure');
+
+                if (success) return 'success';
+                if (failure) return 'failure';
+                return false;
+            }, { timeout: 45000 }, successIndicators, failureIndicators);
+
+            const result = await resultHandle.jsonValue();
+
+            if (result === 'failure') {
+                throw new Error('VERIFICATION_ERROR_PAGE');
+            }
             
             console.log(`[B-${browserId}] ✅ VERIFICATION MESSAGE DETECTED!`);
             console.log(`[B-${browserId}] 🎉 STUDENT VERIFICATION COMPLETED!`);
@@ -675,14 +705,18 @@ await page.waitForFunction((indicators) => {
             return true; // ✅ SUCCESS - Actually verified!
             
         } catch (timeoutError) {
-            console.log(`[B-${browserId}] ❌ Verification timeout - verification FAILED`);
-            
+            if (timeoutError.message === 'VERIFICATION_ERROR_PAGE') {
+                console.log(`[B-${browserId}] ❌ Verification page shows an error message`);
+            } else {
+                console.log(`[B-${browserId}] ❌ Verification timeout - verification FAILED`);
+            }
+
             // Save to unverified file
             const unverifiedData = `${email}:${password}\n`;
             await fs.appendFile('unverified.txt', unverifiedData);
-            console.log(`[B-${browserId}] 💾 Account saved to unverified.txt (timeout)`);
-            
-            return false; // ❌ FAIL - timeout
+            console.log(`[B-${browserId}] 💾 Account saved to unverified.txt (${timeoutError.message === 'VERIFICATION_ERROR_PAGE' ? 'error message' : 'timeout'})`);
+
+            return false; // ❌ FAIL - timeout or error page
         }
         
     } catch (error) {
