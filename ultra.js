@@ -525,33 +525,59 @@ async function verifyStudentAccount(page, browserId, verificationUrl, email, pas
         });
 
         await fastDelay(1000);
-        
-const isConfirmationPage = await page.evaluate(() => {
-    const url = window.location.href;
-    const pageText = document.body.textContent.toLowerCase();
-    
-    // Multi-language confirmation page detection
-    const confirmationIndicators = [
-        'confirm your account', 'confirm', 'verification', 'bevestigen',
-        'student discount', 'verify', 'potvrdit', 'confirmer', 'bestätigen',
-        '确认', 'bevestig', 'confirma', 'confirmar', 'onayla', '確認'
-    ];
-    
-    return (url.includes('student') && url.includes('apply')) ||
-           confirmationIndicators.some(indicator => pageText.includes(indicator));
-});
-        
+
+        // Check if the page already shows a verified state before any interaction
+        const successIndicators = [
+            'verified', 'you\'re verified', 'student status is verified',
+            'verification successful', 'verification complete', 'confirmed',
+            'success', 'complete', 'discount activated', 'student discount confirmed',
+            'congratulations', 'úspěch', 'successo', 'éxito', 'erfolg', '成功'
+        ];
+
+        const { isConfirmationPage, alreadyVerified } = await page.evaluate((successIndicators) => {
+            const url = window.location.href;
+            const pageText = document.body.textContent.toLowerCase();
+
+            // Multi-language confirmation page detection
+            const confirmationIndicators = [
+                'confirm your account', 'confirm', 'verification', 'bevestigen',
+                'student discount', 'verify', 'potvrdit', 'confirmer', 'bestätigen',
+                '确认', 'bevestig', 'confirma', 'confirmar', 'onayla', '確認'
+            ];
+
+            const confirmationPage = (url.includes('student') && url.includes('apply')) ||
+                confirmationIndicators.some(indicator => pageText.includes(indicator));
+
+            const verifiedPage = successIndicators.some(indicator => pageText.includes(indicator)) ||
+                url.includes('success') || url.includes('complete') ||
+                url.includes('verified') || url.includes('successo') ||
+                url.includes('úspěch') || url.includes('éxito');
+
+            return { isConfirmationPage: confirmationPage, alreadyVerified: verifiedPage };
+        }, successIndicators);
+
+        // If the page already shows a verified message, treat it as success immediately
+        if (alreadyVerified) {
+            console.log(`[B-${browserId}] 🎉 Verification already completed on page load!`);
+
+            const accountData = `${email}:${password}\n`;
+            await fs.appendFile('verifiedstudent.txt', accountData);
+            console.log(`[B-${browserId}] 💾 Account saved to verifiedstudent.txt!`);
+
+            return true;
+        }
+
         if (!isConfirmationPage) {
             console.log(`[B-${browserId}] ❌ NOT a confirmation page - verification FAILED`);
-            
+
             // Save to unverified file
             const unverifiedData = `${email}:${password}\n`;
             await fs.appendFile('unverified.txt', unverifiedData);
             console.log(`[B-${browserId}] 💾 Account saved to unverified.txt (wrong page)`);
-            
+
             return false; // ❌ FAIL - not confirmation page
         }
-        
+
         console.log(`[B-${browserId}] ✅ Student confirmation page detected!`);
         
         let confirmClicked = false;
@@ -626,23 +652,15 @@ if (confirmTexts.some(confirmText => text === confirmText || text.includes(confi
         console.log(`[B-${browserId}] ⏳ Waiting for verification message...`);
         
         try {
-await page.waitForFunction(() => {
+await page.waitForFunction((indicators) => {
     const pageText = document.body.textContent.toLowerCase();
     const url = window.location.href;
-    
-    // Multi-language success indicators
-    const successIndicators = [
-        'verified', 'you\'re verified', 'student status is verified',
-        'verification successful', 'verification complete', 'confirmed',
-        'success', 'complete', 'discount activated', 'student discount confirmed',
-        'congratulations', 'úspěch', 'successo', 'éxito', 'erfolg', '成功'
-    ];
-    
-    return successIndicators.some(indicator => pageText.includes(indicator)) ||
-           url.includes('success') || url.includes('complete') || 
+
+    return indicators.some(indicator => pageText.includes(indicator)) ||
+           url.includes('success') || url.includes('complete') ||
            url.includes('verified') || url.includes('successo') ||
            url.includes('úspěch') || url.includes('éxito');
-}, { timeout: 45000 });
+}, { timeout: 45000 }, successIndicators);
             
             console.log(`[B-${browserId}] ✅ VERIFICATION MESSAGE DETECTED!`);
             console.log(`[B-${browserId}] 🎉 STUDENT VERIFICATION COMPLETED!`);
