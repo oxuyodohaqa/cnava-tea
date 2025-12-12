@@ -212,6 +212,40 @@ async function blockAllCookies(page, browserId) {
     }
 }
 
+// Apply stealth-like client hints and navigator overrides beyond the default plugin
+async function applyUndetectableSettings(page, browserId) {
+    const jitterWidth = 360 + Math.floor(Math.random() * 30);
+    const jitterHeight = 900 + Math.floor(Math.random() * 80);
+    const userAgent = getRandomUserAgent();
+
+    await page.setUserAgent(userAgent);
+    await page.setViewport({ width: jitterWidth, height: jitterHeight });
+    await page.setExtraHTTPHeaders({
+        'Accept-Language': 'en-US,en;q=0.9'
+    });
+
+    await page.evaluateOnNewDocument(() => {
+        Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+        Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] });
+        Object.defineProperty(navigator, 'platform', { get: () => 'Win32' });
+        Object.defineProperty(navigator, 'deviceMemory', { get: () => 8 });
+        Object.defineProperty(navigator, 'hardwareConcurrency', { get: () => 8 });
+        Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
+
+        const originalQuery = window.navigator.permissions.query;
+        window.navigator.permissions.query = (parameters) => (
+            parameters.name === 'notifications'
+                ? Promise.resolve({ state: 'denied', onchange: null })
+                : originalQuery(parameters)
+        );
+
+        window.chrome = window.chrome || {};
+        window.chrome.app = window.chrome.app || { InstallState: 'installed', RunningState: 'running' };
+    });
+
+    console.log(`[B-${browserId}] 🕵️ Applied undetectable browser settings`);
+}
+
 // Smart Continue button clicker - works even with captcha present
 async function smartClickContinue(page, browserId, attempts = 6) {
     try {
@@ -759,6 +793,7 @@ async function signupOnly() {
     
     const browser = await puppeteer.launch({
         headless: false,
+        ignoreDefaultArgs: ['--enable-automation'],
         args: [
             "--no-sandbox",
             "--disable-setuid-sandbox",
@@ -769,6 +804,7 @@ async function signupOnly() {
             "--no-first-run",
             "--disable-default-apps",
             "--disable-popup-blocking",
+            "--lang=en-US,en",
             `--disable-extensions-except=${extensionPath}`,
             `--load-extension=${extensionPath}`,
             `--window-size=370,950`,
@@ -786,9 +822,7 @@ async function signupOnly() {
         console.log(`[B-${browserId}] 🚀 SIGNUP ONLY: ${email}`);
         
         const page = await browser.newPage();
-        
-        const userAgent = getRandomUserAgent();
-        await page.setUserAgent(userAgent);
+        await applyUndetectableSettings(page, browserId);
         
         await page.evaluate((browserId) => {
             document.title = `🚀 Spotify-${browserId} - SIGNUP ONLY`;
@@ -1104,6 +1138,7 @@ async function signupAndVerify() {
     
     const browser = await puppeteer.launch({
         headless: false,
+        ignoreDefaultArgs: ['--enable-automation'],
         args: [
             "--no-sandbox",
             "--disable-setuid-sandbox",
@@ -1114,6 +1149,7 @@ async function signupAndVerify() {
             "--no-first-run",
             "--disable-default-apps",
             "--disable-popup-blocking",
+            "--lang=en-US,en",
             `--disable-extensions-except=${extensionPath}`,
             `--load-extension=${extensionPath}`,
             `--window-size=370,950`,
@@ -1132,9 +1168,7 @@ async function signupAndVerify() {
         console.log(`[B-${browserId}] 🔗 Unique link assigned`);
         
         const page = await browser.newPage();
-        
-        const userAgent = getRandomUserAgent();
-        await page.setUserAgent(userAgent);
+        await applyUndetectableSettings(page, browserId);
         
         await page.evaluate((browserId) => {
             document.title = `🚀 Spotify-${browserId} - SIGNUP + VERIFY`;
